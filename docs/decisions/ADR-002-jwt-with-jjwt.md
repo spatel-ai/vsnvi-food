@@ -25,7 +25,9 @@ at runtime) with a custom filter:
 - **`JwtService` (in `auth`):** issues access tokens (`sub`, `role`, `iat`, `exp`, `iss`, `jti`,
   and `kid` in the header) and parses them. HS256 with a key of at least 256 bits from
   `JWT_SIGNING_KEY`. During a key rotation it accepts the old and new keys, chosen by `kid`.
-- **`JwtAuthenticationFilter`:** a `OncePerRequestFilter` registered before
+- **`JwtAuthenticationFilter`** (*superseded by [ADR-006](ADR-006-security-filter-chain-in-common.md):
+  the filter is `common`'s `BearerTokenAuthenticationFilter`, which calls `auth`'s
+  `TokenAuthenticator`*): a `OncePerRequestFilter` registered before
   `UsernamePasswordAuthenticationFilter`. It reads `Authorization: Bearer …`, validates the
   signature, `exp` and `iss` through `JwtService`, and sets the `SecurityContext`. It maps an
   expired token to `TOKEN_EXPIRED` and any other failure to `UNAUTHORIZED`.

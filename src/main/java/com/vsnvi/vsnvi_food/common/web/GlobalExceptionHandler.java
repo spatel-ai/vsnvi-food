@@ -2,13 +2,10 @@ package com.vsnvi.vsnvi_food.common.web;
 
 import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
@@ -33,8 +30,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RequiredArgsConstructor
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    static final String TRACE_ID_MDC_KEY = "traceId";
-
     private static final Map<Integer, ErrorCode> CODES_BY_STATUS = Map.of(
             400, ErrorCode.MALFORMED_REQUEST,
             401, ErrorCode.UNAUTHORIZED,
@@ -45,7 +40,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             413, ErrorCode.PAYLOAD_TOO_LARGE,
             415, ErrorCode.UNSUPPORTED_MEDIA_TYPE);
 
-    private final Clock clock;
+    private final ProblemDetailFactory problems;
 
     @ExceptionHandler(DomainException.class)
     ProblemDetail handleDomain(DomainException ex) {
@@ -57,14 +52,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(ErrorCode.CONCURRENT_MODIFICATION, "The resource was modified concurrently; retry");
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    ProblemDetail handleAccessDenied(AccessDeniedException ex) {
-        return problem(ErrorCode.FORBIDDEN, "Access denied");
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    ProblemDetail handleAuthentication(AuthenticationException ex) {
-        return problem(ErrorCode.UNAUTHORIZED, "Authentication required");
+    /**
+     * Rethrown so Spring Security's {@code ExceptionTranslationFilter} decides: 401 for an anonymous caller, 403 for an
+     * authenticated one with the wrong role. Both bodies come from {@code common.security}.
+     */
+    @ExceptionHandler({AccessDeniedException.class, AuthenticationException.class})
+    void rethrowSecurityException(RuntimeException ex) {
+        throw ex;
     }
 
     @ExceptionHandler(Exception.class)
@@ -118,16 +112,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ProblemDetail problem(ErrorCode code, String detail) {
-        var problem = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(code.status()), detail);
-        problem.setType(code.type());
-        problem.setTitle(code.title());
-        problem.setProperty("code", code.name());
-        problem.setProperty("timestamp", Instant.now(clock));
-        var traceId = MDC.get(TRACE_ID_MDC_KEY);
-        if (traceId != null) {
-            problem.setProperty("traceId", traceId);
-        }
-        return problem;
+        return problems.create(code, detail);
     }
 
     record FieldError(String field, String message) {}

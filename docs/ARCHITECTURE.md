@@ -73,8 +73,9 @@ them.
 ```
 common/
 ├── domain/   BaseEntity, Money, DomainException, ErrorCode, NotFoundException
-├── web/      GlobalExceptionHandler (ProblemDetail), pagination envelopes, request filters
-└── config/   cross-cutting @Configuration (Clock, JPA auditing, STOMP, OpenAPI)
+├── web/      GlobalExceptionHandler, ProblemDetailFactory, PageResponse, request filters
+├── security/ AuthenticatedUser, CurrentUser, TokenAuthenticator SPI, bearer-token filter (ADR-006)
+└── config/   cross-cutting @Configuration (Clock, JPA auditing, SecurityConfig, STOMP, OpenAPI)
 ```
 
 ### Boundary enforcement (Spring Modulith)

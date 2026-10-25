@@ -26,8 +26,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,7 +39,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.ThrowingController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({GlobalExceptionHandlerTest.ThrowingController.class, GlobalExceptionHandlerTest.FixedClock.class})
+@Import({
+    GlobalExceptionHandlerTest.ThrowingController.class,
+    GlobalExceptionHandlerTest.FixedClock.class,
+    ProblemDetailFactory.class
+})
 class GlobalExceptionHandlerTest {
 
     private final MockMvc mvc;
@@ -102,20 +104,6 @@ class GlobalExceptionHandlerTest {
                         .content("{not json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"));
-    }
-
-    @Test
-    void should_return_unauthorized_when_authentication_fails() throws Exception {
-        mvc.perform(get("/test/unauthenticated"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
-    }
-
-    @Test
-    void should_return_forbidden_when_access_is_denied() throws Exception {
-        mvc.perform(get("/test/denied"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
@@ -194,16 +182,6 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/items/{id}")
         void item(@PathVariable long id) {}
-
-        @GetMapping("/test/unauthenticated")
-        void unauthenticated() {
-            throw new BadCredentialsException("bad");
-        }
-
-        @GetMapping("/test/denied")
-        void denied() {
-            throw new AccessDeniedException("nope");
-        }
 
         @GetMapping("/test/not-acceptable")
         void notAcceptable() throws HttpMediaTypeNotAcceptableException {

@@ -31,9 +31,10 @@ sequenceDiagram
     RS256 when another service needs to verify tokens.
   - Issued and validated with the **jjwt** library ([ADR-002](decisions/ADR-002-jwt-with-jjwt.md)),
     not Spring's OAuth2 resource server. A `JwtService` in `auth` issues and parses tokens.
-  - A `JwtAuthenticationFilter` (`OncePerRequestFilter`, registered before
-    `UsernamePasswordAuthenticationFilter`) validates the signature, `exp` and `iss` statelessly,
-    and puts the user ID and role into the `SecurityContext`. An expired token produces
+  - `common`'s `BearerTokenAuthenticationFilter` (`OncePerRequestFilter`, registered before
+    `UsernamePasswordAuthenticationFilter`) passes the token to the `TokenAuthenticator` SPI, which
+    `auth` implements with `JwtService`. It validates the signature, `exp` and `iss` statelessly,
+    and puts the user ID and role into the `SecurityContext` ([ADR-006](decisions/ADR-006-security-filter-chain-in-common.md)). An expired token produces
     `401 TOKEN_EXPIRED`; any other invalid token produces `401 UNAUTHORIZED`.
   - The same `JwtService` validates the token on STOMP `CONNECT`: `auth` implements the
     `TokenAuthenticator` SPI that the STOMP interceptor in `common` calls (see §5).

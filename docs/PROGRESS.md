@@ -17,10 +17,11 @@ Modules are listed in build order: a module comes after every module it calls or
 - [ ] `common` kernel
   - [x] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
     - [ ] `@DataJpaTest` for audit timestamps from a fixed `Clock` (with the first entity)
-  - [ ] `Money` value object and JPA mapping
+  - [x] `Money` value object and JPA mapping
   - [x] `DomainException` hierarchy and `ErrorCode`
   - [x] Global `@RestControllerAdvice` returning `ProblemDetail`
   - [ ] Pagination envelopes (offset and cursor)
+    - [x] Offset: `PageResponse`
   - [ ] Trace ID filter (MDC)
   - [ ] Idempotency-Key support
   - [x] `Clock` bean (UTC)
@@ -53,7 +54,8 @@ Modules are listed in build order: a module comes after every module it calls or
 
 ### auth
 - [ ] Migration: credentials, refresh_tokens
-- [ ] `JwtService` (jjwt) and `JwtAuthenticationFilter`, security filter chain, exact-path public allowlist
+- [x] Security filter chain, exact-path public allowlist, `CurrentUser`, ProblemDetail 401/403 (in `common`, ADR-006)
+- [ ] `JwtService` (jjwt) implementing `TokenAuthenticator`
 - [ ] Register, login (rejects blocked users), refresh (rotation and reuse detection), logout
 - [ ] Login rate limiting (per IP and per account)
 - [ ] `AdminBootstrap`: first admin from `ADMIN_BOOTSTRAP_*` env vars
