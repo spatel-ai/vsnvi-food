@@ -56,7 +56,7 @@ class AuthControllerTest {
 
     @Test
     void should_return_created_when_registration_is_valid() throws Exception {
-        given(authService.register("asha@example.com", "s3cret-pass", "Asha", null, Role.RIDER))
+        given(authService.register("asha@example.com", "s3cret-pass", "Asha", null, Role.RIDER, "127.0.0.1"))
                 .willReturn(new UserSummary(USER_ID, "asha@example.com", "Asha", null, Role.RIDER, UserStatus.ACTIVE));
 
         mvc.perform(post("/api/v1/auth/register")
@@ -111,7 +111,7 @@ class AuthControllerTest {
 
     @Test
     void should_return_conflict_when_email_is_already_registered() throws Exception {
-        given(authService.register("asha@example.com", "s3cret-pass", "Asha", null, Role.CUSTOMER))
+        given(authService.register("asha@example.com", "s3cret-pass", "Asha", null, Role.CUSTOMER, "127.0.0.1"))
                 .willThrow(new DomainException(ErrorCode.EMAIL_ALREADY_REGISTERED, "taken") {});
 
         mvc.perform(post("/api/v1/auth/register")
@@ -175,7 +175,7 @@ class AuthControllerTest {
 
     @Test
     void should_rotate_tokens_when_refresh_token_is_valid() throws Exception {
-        given(authService.refresh("old")).willReturn(TOKENS);
+        given(authService.refresh("old", "127.0.0.1")).willReturn(TOKENS);
 
         mvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -186,7 +186,7 @@ class AuthControllerTest {
 
     @Test
     void should_return_unauthorized_when_refresh_token_is_invalid() throws Exception {
-        given(authService.refresh("reused")).willThrow(new InvalidRefreshTokenException());
+        given(authService.refresh("reused", "127.0.0.1")).willThrow(new InvalidRefreshTokenException());
 
         mvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)

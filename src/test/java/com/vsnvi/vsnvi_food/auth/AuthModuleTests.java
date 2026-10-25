@@ -68,14 +68,14 @@ class AuthModuleTests {
 
     @Test
     void should_publish_UserRegistered_when_rider_registers(Scenario scenario) {
-        scenario.stimulate(() -> authService.register(email(), PASSWORD, "Ravi", null, Role.RIDER))
+        scenario.stimulate(() -> authService.register(email(), PASSWORD, "Ravi", null, Role.RIDER, randomIp()))
                 .andWaitForEventOfType(UserRegistered.class)
                 .toArriveAndVerify(event -> assertThat(event.role()).isEqualTo(Role.RIDER));
     }
 
     @Test
     void should_store_bcrypt_hash_not_password_when_registering() {
-        var user = authService.register(email(), PASSWORD, "Asha", null, Role.CUSTOMER);
+        var user = authService.register(email(), PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
 
         var hash = credentials.findByUserId(user.id()).orElseThrow().getPasswordHash();
         assertThat(hash).startsWith("{bcrypt}$2a$12$").doesNotContain(PASSWORD);
@@ -84,7 +84,7 @@ class AuthModuleTests {
     @Test
     void should_issue_access_token_that_authenticates_when_login_succeeds() {
         var email = email();
-        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
 
         var tokens = authService.login(email.toUpperCase(), PASSWORD, "127.0.0.1");
 
@@ -97,7 +97,7 @@ class AuthModuleTests {
     @Test
     void should_fail_identically_when_email_unknown_or_password_wrong() {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
 
         assertThatThrownBy(() -> authService.login(email, "wrong-password", "127.0.0.1"))
                 .isInstanceOf(InvalidCredentialsException.class)
@@ -110,48 +110,49 @@ class AuthModuleTests {
     @Test
     void should_rotate_and_revoke_family_when_old_refresh_token_is_reused() {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var first = authService.login(email, PASSWORD, "127.0.0.1");
 
-        var second = authService.refresh(first.refreshToken());
+        var second = authService.refresh(first.refreshToken(), randomIp());
         assertThat(second.refreshToken()).isNotEqualTo(first.refreshToken());
 
-        assertThatThrownBy(() -> authService.refresh(first.refreshToken()))
+        assertThatThrownBy(() -> authService.refresh(first.refreshToken(), randomIp()))
                 .isInstanceOf(InvalidRefreshTokenException.class);
         // Reuse revoked the whole family, including the legitimately rotated token.
-        assertThatThrownBy(() -> authService.refresh(second.refreshToken()))
+        assertThatThrownBy(() -> authService.refresh(second.refreshToken(), randomIp()))
                 .isInstanceOf(InvalidRefreshTokenException.class);
     }
 
     @Test
     void should_revoke_family_when_owner_logs_out() {
         var email = email();
-        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var tokens = authService.login(email, PASSWORD, "127.0.0.1");
 
         signInAs(user.id());
         authService.logout(tokens.refreshToken());
 
-        assertThatThrownBy(() -> authService.refresh(tokens.refreshToken()))
+        assertThatThrownBy(() -> authService.refresh(tokens.refreshToken(), randomIp()))
                 .isInstanceOf(InvalidRefreshTokenException.class);
     }
 
     @Test
     void should_ignore_logout_when_refresh_token_belongs_to_someone_else() {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var tokens = authService.login(email, PASSWORD, "127.0.0.1");
 
         signInAs(UUID.randomUUID());
         authService.logout(tokens.refreshToken());
 
-        assertThat(authService.refresh(tokens.refreshToken()).accessToken()).isNotBlank();
+        assertThat(authService.refresh(tokens.refreshToken(), randomIp()).accessToken())
+                .isNotBlank();
     }
 
     @Test
     void should_revoke_tokens_idempotently_when_UserBlocked_arrives_twice(Scenario scenario) {
         var email = email();
-        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var tokens = authService.login(email, PASSWORD, "127.0.0.1");
         var event = new UserBlocked(user.id(), "fraud", Instant.now());
 
@@ -164,7 +165,7 @@ class AuthModuleTests {
     @Test
     void should_rotate_once_when_same_refresh_token_is_used_concurrently() throws Exception {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var token = authService.login(email, PASSWORD, "127.0.0.1").refreshToken();
         var start = new CountDownLatch(1);
 
@@ -184,7 +185,7 @@ class AuthModuleTests {
     private String refreshAfter(CountDownLatch start, String token) throws InterruptedException {
         start.await();
         try {
-            authService.refresh(token);
+            authService.refresh(token, randomIp());
             return "rotated";
         } catch (InvalidRefreshTokenException ex) {
             return "rejected";
@@ -194,7 +195,7 @@ class AuthModuleTests {
     @Test
     void should_rate_limit_account_after_ten_failures_even_with_right_password() {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var ip = randomIp();
         for (int i = 0; i < 10; i++) {
             assertThatThrownBy(() -> authService.login(email, "wrong-password", ip))
@@ -220,7 +221,7 @@ class AuthModuleTests {
     @Test
     void should_reset_failures_when_login_succeeds() {
         var email = email();
-        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER, randomIp());
         var ip = randomIp();
         for (int i = 0; i < 9; i++) {
             assertThatThrownBy(() -> authService.login(email, "wrong-password", ip))

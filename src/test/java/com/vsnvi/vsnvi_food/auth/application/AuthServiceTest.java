@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -20,6 +21,7 @@ import com.vsnvi.vsnvi_food.auth.domain.RefreshTokenRepository;
 import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
 import com.vsnvi.vsnvi_food.common.domain.ValidationException;
+import com.vsnvi.vsnvi_food.common.ratelimit.RateLimitedException;
 import com.vsnvi.vsnvi_food.common.ratelimit.RateLimiter;
 import com.vsnvi.vsnvi_food.common.security.CurrentUser;
 import com.vsnvi.vsnvi_food.user.api.NewUser;
@@ -52,6 +54,8 @@ class AuthServiceTest {
     private final AccessTokenIssuer accessTokens = mock(AccessTokenIssuer.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
 
+    private final RateLimiter limiter = allowingLimiter();
+
     @SuppressWarnings("deprecation") // plain-text encoder keeps the test fast; production uses BCrypt(12)
     private final AuthService authService = new AuthService(
             userApi,
@@ -62,7 +66,12 @@ class AuthServiceTest {
             new CurrentUser(),
             events,
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LoginRateLimits(allowingLimiter(), 30, Duration.ofMinutes(5), 10, Duration.ofMinutes(15)),
+            new AuthRateLimits(
+                    limiter,
+                    new AuthRateLimits.Limit(30, Duration.ofMinutes(5)),
+                    new AuthRateLimits.Limit(10, Duration.ofMinutes(15)),
+                    new AuthRateLimits.Limit(20, Duration.ofHours(1)),
+                    new AuthRateLimits.Limit(120, Duration.ofMinutes(5))),
             Duration.ofDays(30));
 
     private static RateLimiter allowingLimiter() {
@@ -100,14 +109,35 @@ class AuthServiceTest {
                 .willReturn(Optional.of(token));
         given(userApi.findById(USER_ID)).willReturn(Optional.of(BLOCKED));
 
-        assertThatThrownBy(() -> authService.refresh("raw")).isInstanceOf(AccountBlockedException.class);
+        assertThatThrownBy(() -> authService.refresh("raw", "127.0.0.1")).isInstanceOf(AccountBlockedException.class);
         then(refreshTokens).should().revokeFamily(familyId, NOW);
         then(accessTokens).shouldHaveNoInteractions();
     }
 
     @Test
+    void should_return_rate_limited_before_any_work_when_ip_registers_too_often() {
+        given(limiter.hit(eq("register:ip:9.9.9.9"), anyInt(), any()))
+                .willReturn(new RateLimiter.Decision(false, Duration.ofMinutes(30)));
+
+        assertThatThrownBy(
+                        () -> authService.register("a@example.com", "pw-123456", "A", null, Role.CUSTOMER, "9.9.9.9"))
+                .isInstanceOf(RateLimitedException.class);
+        then(userApi).shouldHaveNoInteractions();
+        then(credentials).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void should_return_rate_limited_before_lookup_when_ip_refreshes_too_often() {
+        given(limiter.hit(eq("refresh:ip:9.9.9.9"), anyInt(), any()))
+                .willReturn(new RateLimiter.Decision(false, Duration.ofMinutes(1)));
+
+        assertThatThrownBy(() -> authService.refresh("raw", "9.9.9.9")).isInstanceOf(RateLimitedException.class);
+        then(refreshTokens).shouldHaveNoInteractions();
+    }
+
+    @Test
     void should_refuse_to_register_admin() {
-        assertThatThrownBy(() -> authService.register("a@example.com", "pw-123456", "A", null, Role.ADMIN))
+        assertThatThrownBy(() -> authService.register("a@example.com", "pw-123456", "A", null, Role.ADMIN, "127.0.0.1"))
                 .isInstanceOf(IllegalArgumentException.class);
         then(userApi).shouldHaveNoInteractions();
     }

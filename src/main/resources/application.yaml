@@ -86,6 +86,12 @@ auth:
     ip-window: 5m
     failures-per-account: 10   # failed attempts per account per window; a success resets it
     account-window: 15m
+  register-rate-limit:
+    per-ip: 20                 # registrations per client IP per window
+    ip-window: 1h
+  refresh-rate-limit:
+    per-ip: 120                # refreshes per client IP per window
+    ip-window: 5m
 
 pricing:
   tax-percent: 5

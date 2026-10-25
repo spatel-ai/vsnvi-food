@@ -25,13 +25,15 @@ class AuthController {
     @PostMapping("/register")
     @SecurityRequirements
     @Operation(summary = "Register a customer, restaurant owner or rider", operationId = "register")
-    ResponseEntity<RegisteredUserResponse> register(@Valid @RequestBody RegisterRequest request) {
+    ResponseEntity<RegisteredUserResponse> register(
+            @Valid @RequestBody RegisterRequest request, HttpServletRequest http) {
         var user = authService.register(
                 request.email(),
                 request.password(),
                 request.fullName(),
                 request.phone(),
-                request.role().toRole());
+                request.role().toRole(),
+                http.getRemoteAddr());
         return ResponseEntity.created(URI.create("/api/v1/users/me")).body(RegisteredUserResponse.from(user));
     }
 
@@ -46,8 +48,8 @@ class AuthController {
     @PostMapping("/refresh")
     @SecurityRequirements
     @Operation(summary = "Rotate the refresh token and get a new access token", operationId = "refreshTokens")
-    TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return TokenResponse.from(authService.refresh(request.refreshToken()));
+    TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request, HttpServletRequest http) {
+        return TokenResponse.from(authService.refresh(request.refreshToken(), http.getRemoteAddr()));
     }
 
     @PostMapping("/logout")

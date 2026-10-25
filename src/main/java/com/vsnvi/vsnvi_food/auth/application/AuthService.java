@@ -41,7 +41,7 @@ public class AuthService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final Duration refreshTokenTtl;
-    private final LoginRateLimits loginRateLimits;
+    private final AuthRateLimits rateLimits;
 
     /** Compared against when the email is unknown, so a missing account takes as long as a wrong password. */
     private final String dummyHash;
@@ -55,7 +55,7 @@ public class AuthService {
             CurrentUser currentUser,
             ApplicationEventPublisher events,
             Clock clock,
-            LoginRateLimits loginRateLimits,
+            AuthRateLimits rateLimits,
             @Value("${auth.jwt.refresh-token-ttl}") Duration refreshTokenTtl) {
         this.userApi = userApi;
         this.credentials = credentials;
@@ -66,16 +66,21 @@ public class AuthService {
         this.events = events;
         this.clock = clock;
         this.refreshTokenTtl = refreshTokenTtl;
-        this.loginRateLimits = loginRateLimits;
+        this.rateLimits = rateLimits;
         this.dummyHash = passwordEncoder.encode(OpaqueTokens.generate());
     }
 
-    /** Registration can never create an {@code ADMIN}: the web layer only accepts the three public roles. */
+    /**
+     * Rate-limited per client IP. Registration can never create an {@code ADMIN}: the web layer only accepts the three
+     * public roles.
+     */
     @Transactional
-    public UserSummary register(String email, String password, String fullName, String phone, Role role) {
+    public UserSummary register(
+            String email, String password, String fullName, String phone, Role role, String clientIp) {
         if (role == Role.ADMIN) {
             throw new IllegalArgumentException("Registration can't create an ADMIN");
         }
+        rateLimits.checkRegistration(clientIp);
         var user = createAccount(email, password, fullName, phone, role);
         events.publishEvent(new UserRegistered(user.id(), user.email(), user.role(), Instant.now(clock)));
         return user;
@@ -94,10 +99,10 @@ public class AuthService {
     /** Rate-limited per client IP and per account (failed attempts); over a limit returns {@code RATE_LIMITED}. */
     @Transactional
     public Tokens login(String email, String password, String clientIp) {
-        loginRateLimits.checkAttempt(clientIp, email);
+        rateLimits.checkLoginAttempt(clientIp, email);
         if (!PasswordPolicy.fitsBcrypt(password)) {
             // No stored password can be this long, and BCrypt would throw on it.
-            loginRateLimits.recordFailure(email);
+            rateLimits.recordLoginFailure(email);
             throw new InvalidCredentialsException();
         }
         var user = userApi.findByEmail(email).orElse(null);
@@ -106,10 +111,10 @@ public class AuthService {
         var hash = credential == null ? dummyHash : credential.getPasswordHash();
         var matches = passwordEncoder.matches(password, hash);
         if (credential == null || !matches) {
-            loginRateLimits.recordFailure(email);
+            rateLimits.recordLoginFailure(email);
             throw new InvalidCredentialsException();
         }
-        loginRateLimits.recordSuccess(email);
+        rateLimits.recordLoginSuccess(email);
         // Checked only after the password, so a blocked status never reveals that an account exists.
         if (user.isBlocked()) {
             throw new AccountBlockedException();
@@ -119,11 +124,12 @@ public class AuthService {
 
     /**
      * Rotates a refresh token. A token that was already used or revoked is reuse: the whole family is revoked, so a
-     * stolen token stops working for both the thief and the owner.
+     * stolen token stops working for both the thief and the owner. Rate-limited per client IP.
      */
     // The family revoke must commit even though the request fails.
     @Transactional(noRollbackFor = {InvalidRefreshTokenException.class, AccountBlockedException.class})
-    public Tokens refresh(String rawRefreshToken) {
+    public Tokens refresh(String rawRefreshToken, String clientIp) {
+        rateLimits.checkRefresh(clientIp);
         var now = clock.instant();
         var token = refreshTokens
                 .findForUpdateByTokenHash(OpaqueTokens.sha256Hex(rawRefreshToken))
