@@ -165,6 +165,39 @@ class MenuModuleTests {
         assertThat(noVariants.name()).isEqualTo("Dum Biryani");
     }
 
+    @Test
+    void should_return_ids_of_new_options_when_patch_replaces_them() {
+        var category = menuService.createCategory(restaurantId, "Mains", null);
+        var item = menuService.createItem(restaurantId, draft(category.id(), "Biryani"));
+
+        var updated = menuService.updateItem(
+                item.id(),
+                new MenuService.ItemPatch(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(new MenuService.OptionDraft("Family", Money.inr("600"))),
+                        List.of(new MenuService.OptionDraft("Salan", Money.inr("40")))));
+
+        assertThat(updated.variants())
+                .singleElement()
+                .satisfies(v -> assertThat(v.id()).isNotNull());
+        assertThat(updated.addOns())
+                .singleElement()
+                .satisfies(a -> assertThat(a.id()).isNotNull());
+        assertThat(menuService
+                        .menuOf(restaurantId)
+                        .categories()
+                        .getFirst()
+                        .items()
+                        .getFirst()
+                        .variants())
+                .extracting(MenuService.OptionView::id)
+                .containsExactly(updated.variants().getFirst().id());
+    }
+
     private static MenuService.ItemDraft draft(UUID categoryId, String name) {
         return new MenuService.ItemDraft(
                 categoryId,

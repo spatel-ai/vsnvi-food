@@ -138,7 +138,8 @@ public class MenuService implements MenuApi {
         if (patch.addOns() != null) {
             item.replaceAddOns(toAddOns(patch.addOns()));
         }
-        return toView(item);
+        // New variants and add-ons get their IDs only at flush, and the view must carry them.
+        return toView(items.saveAndFlush(item));
     }
 
     @Transactional

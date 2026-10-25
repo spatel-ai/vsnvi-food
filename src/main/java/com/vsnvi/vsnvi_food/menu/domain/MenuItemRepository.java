@@ -9,6 +9,9 @@ public interface MenuItemRepository {
 
     MenuItem save(MenuItem item);
 
+    /** Flushes too, so variants and add-ons added to a managed item get their IDs. */
+    MenuItem saveAndFlush(MenuItem item);
+
     void delete(MenuItem item);
 
     Optional<MenuItem> findById(UUID id);
