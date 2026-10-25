@@ -85,6 +85,18 @@ class AuthControllerTest {
     }
 
     @Test
+    void should_reject_registration_when_password_exceeds_72_bytes() throws Exception {
+        var emoji = "\uD83D\uDE00".repeat(30); // 60 chars, 120 bytes: within @Size, over BCrypt's limit
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REGISTER_BODY.formatted("CUSTOMER").replace("s3cret-pass", emoji)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+        then(authService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void should_reject_registration_when_email_is_invalid() throws Exception {
         mvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

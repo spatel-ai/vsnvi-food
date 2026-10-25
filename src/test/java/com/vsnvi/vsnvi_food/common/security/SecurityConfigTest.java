@@ -60,6 +60,14 @@ class SecurityConfigTest {
     }
 
     @Test
+    void should_ignore_stale_bearer_header_when_calling_credential_endpoints() throws Exception {
+        mvc.perform(post("/api/v1/auth/refresh").header(HttpHeaders.AUTHORIZATION, "Bearer expired"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/login").header(HttpHeaders.AUTHORIZATION, "Bearer garbage"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void should_expose_authenticated_user_id_when_token_is_valid() throws Exception {
         mvc.perform(get("/api/v1/probe/me").header(HttpHeaders.AUTHORIZATION, bearer("CUSTOMER", USER_ID)))
                 .andExpect(status().isOk())
@@ -133,6 +141,11 @@ class SecurityConfigTest {
 
         @PostMapping("/api/v1/auth/login")
         String login() {
+            return "ok";
+        }
+
+        @PostMapping("/api/v1/auth/refresh")
+        String refresh() {
             return "ok";
         }
     }

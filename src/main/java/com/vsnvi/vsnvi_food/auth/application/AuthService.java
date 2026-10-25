@@ -8,6 +8,7 @@ import com.vsnvi.vsnvi_food.auth.domain.CredentialRepository;
 import com.vsnvi.vsnvi_food.auth.domain.InvalidCredentialsException;
 import com.vsnvi.vsnvi_food.auth.domain.InvalidRefreshTokenException;
 import com.vsnvi.vsnvi_food.auth.domain.OpaqueTokens;
+import com.vsnvi.vsnvi_food.auth.domain.PasswordPolicy;
 import com.vsnvi.vsnvi_food.auth.domain.RefreshToken;
 import com.vsnvi.vsnvi_food.auth.domain.RefreshTokenRepository;
 import com.vsnvi.vsnvi_food.common.security.CurrentUser;
@@ -80,6 +81,7 @@ public class AuthService {
     /** Creates the user and their credential, without publishing {@link UserRegistered}. Used by the bootstrap. */
     @Transactional
     public UserSummary createAccount(String email, String password, String fullName, String phone, Role role) {
+        PasswordPolicy.check(password);
         var user = userApi.createUser(new NewUser(email, fullName, phone, role));
         credentials.save(Credential.create(user.id(), passwordEncoder.encode(password)));
         log.info("Registered user {} with role {}", user.id(), user.role());
@@ -88,6 +90,10 @@ public class AuthService {
 
     @Transactional
     public Tokens login(String email, String password) {
+        if (!PasswordPolicy.fitsBcrypt(password)) {
+            // No stored password can be this long, and BCrypt would throw on it.
+            throw new InvalidCredentialsException();
+        }
         var user = userApi.findByEmail(email).orElse(null);
         var credential =
                 user == null ? null : credentials.findByUserId(user.id()).orElse(null);

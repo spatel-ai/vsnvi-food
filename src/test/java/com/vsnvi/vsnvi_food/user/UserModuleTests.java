@@ -97,6 +97,32 @@ class UserModuleTests {
         assertThat(addressService.list()).isEmpty();
     }
 
+    @Test
+    void should_refuse_to_block_an_admin_including_yourself() {
+        var admin = userApi.createUser(new NewUser("admin-" + UUID.randomUUID() + "@example.com", "Admin", null, Role.ADMIN));
+        signInAs(admin.id(), "ADMIN");
+
+        assertThatThrownBy(() -> userService.block(admin.id(), "oops"))
+                .isInstanceOf(DomainException.class)
+                .extracting(e -> ((DomainException) e).errorCode())
+                .isEqualTo(ErrorCode.CANNOT_BLOCK_ADMIN);
+    }
+
+    @Test
+    void should_refuse_more_than_twenty_addresses_per_customer() {
+        var customer = userApi.createUser(new NewUser("many-" + UUID.randomUUID() + "@example.com", "Many", null, Role.CUSTOMER));
+        signInAs(customer.id(), "CUSTOMER");
+        var home = new Address.Details("Home", "12 MG Road", null, "Bengaluru", "Karnataka", "560001", 12.97, 77.59);
+        for (int i = 0; i < 20; i++) {
+            addressService.add(home);
+        }
+
+        assertThatThrownBy(() -> addressService.add(home))
+                .isInstanceOf(DomainException.class)
+                .extracting(e -> ((DomainException) e).errorCode())
+                .isEqualTo(ErrorCode.ADDRESS_LIMIT_REACHED);
+    }
+
     private static void signInAs(UUID userId, String role) {
         var principal = new AuthenticatedUser(userId, role, Instant.now().plusSeconds(900));
         SecurityContextHolder.getContext()

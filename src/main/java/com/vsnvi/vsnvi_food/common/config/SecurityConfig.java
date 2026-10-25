@@ -16,6 +16,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
@@ -60,7 +63,7 @@ public class SecurityConfig {
                 .exceptionHandling(
                         e -> e.authenticationEntryPoint(problemHandler).accessDeniedHandler(problemHandler))
                 .addFilterBefore(
-                        new BearerTokenAuthenticationFilter(tokenAuthenticator, problemHandler),
+                        new BearerTokenAuthenticationFilter(tokenAuthenticator, problemHandler, credentialEndpoints()),
                         UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth.dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
@@ -71,6 +74,15 @@ public class SecurityConfig {
                         .anyRequest()
                         .authenticated());
         return http.build();
+    }
+
+    /** Endpoints that authenticate by credentials in the body, never by the bearer header. */
+    static RequestMatcher credentialEndpoints() {
+        var paths = PathPatternRequestMatcher.withDefaults();
+        return new OrRequestMatcher(
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/register"),
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/login"),
+                paths.matcher(HttpMethod.POST, "/api/v1/auth/refresh"));
     }
 
     /** Swagger UI and the spec are public outside prod only (docs/SECURITY.md §6). */

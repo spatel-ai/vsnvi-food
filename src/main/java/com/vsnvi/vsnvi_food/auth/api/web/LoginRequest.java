@@ -5,4 +5,5 @@ import jakarta.validation.constraints.Size;
 
 record LoginRequest(
         @NotBlank @Size(max = 254) String email,
-        @NotBlank @Size(max = 72) String password) {}
+        // Over-long passwords get INVALID_CREDENTIALS from the service, like any wrong password.
+        @NotBlank @Size(max = 500) String password) {}

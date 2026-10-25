@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -27,11 +28,24 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final ObjectProvider<TokenAuthenticator> tokenAuthenticator;
     private final AuthenticationEntryPoint entryPoint;
+    private final RequestMatcher ignored;
 
+    /**
+     * @param ignored requests whose bearer header is never read, e.g. {@code POST /auth/refresh}: a client that still
+     *     sends its expired access token there must be able to refresh
+     */
     public BearerTokenAuthenticationFilter(
-            ObjectProvider<TokenAuthenticator> tokenAuthenticator, AuthenticationEntryPoint entryPoint) {
+            ObjectProvider<TokenAuthenticator> tokenAuthenticator,
+            AuthenticationEntryPoint entryPoint,
+            RequestMatcher ignored) {
         this.tokenAuthenticator = tokenAuthenticator;
         this.entryPoint = entryPoint;
+        this.ignored = ignored;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return ignored.matches(request);
     }
 
     @Override

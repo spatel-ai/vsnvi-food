@@ -11,6 +11,7 @@ import com.vsnvi.vsnvi_food.user.api.UserStatus;
 import com.vsnvi.vsnvi_food.user.api.UserSummary;
 import com.vsnvi.vsnvi_food.user.domain.Address;
 import com.vsnvi.vsnvi_food.user.domain.AddressRepository;
+import com.vsnvi.vsnvi_food.user.domain.CannotBlockAdminException;
 import com.vsnvi.vsnvi_food.user.domain.EmailAlreadyRegisteredException;
 import com.vsnvi.vsnvi_food.user.domain.User;
 import com.vsnvi.vsnvi_food.user.domain.UserRepository;
@@ -105,6 +106,10 @@ public class UserService implements UserApi {
     @Transactional
     public UserSummary block(UUID userId, String reason) {
         var user = users.findById(userId).orElseThrow(() -> new NotFoundException("User " + userId));
+        if (user.getRole() == Role.ADMIN) {
+            // Covers blocking yourself and the last admin; there is no unblock endpoint to recover from either.
+            throw new CannotBlockAdminException();
+        }
         if (user.block()) {
             events.publishEvent(new UserBlocked(user.getId(), reason, Instant.now(clock)));
             log.info("Blocked user {} (by admin {})", user.getId(), currentUser.id());

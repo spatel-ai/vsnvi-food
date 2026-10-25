@@ -12,7 +12,7 @@ public final class Pageables {
     public static Pageable requireSortableBy(Pageable pageable, Set<String> allowed) {
         for (var order : pageable.getSort()) {
             if (!allowed.contains(order.getProperty())) {
-                throw new ValidationException("Unsupported sort field: " + order.getProperty());
+                throw new ValidationException("Unsupported sort field; allowed: " + String.join(", ", allowed));
             }
         }
         return pageable;

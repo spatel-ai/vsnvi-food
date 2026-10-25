@@ -4,6 +4,7 @@ import com.vsnvi.vsnvi_food.common.domain.NotFoundException;
 import com.vsnvi.vsnvi_food.common.security.CurrentUser;
 import com.vsnvi.vsnvi_food.user.api.AddressSummary;
 import com.vsnvi.vsnvi_food.user.domain.Address;
+import com.vsnvi.vsnvi_food.user.domain.AddressLimitReachedException;
 import com.vsnvi.vsnvi_food.user.domain.AddressRepository;
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AddressService {
+
+    static final int MAX_ADDRESSES = 20;
 
     private final AddressRepository addresses;
     private final CurrentUser currentUser;
@@ -28,6 +31,9 @@ public class AddressService {
 
     @Transactional
     public AddressSummary add(Address.Details details) {
+        if (addresses.countByUserId(currentUser.id()) >= MAX_ADDRESSES) {
+            throw new AddressLimitReachedException(MAX_ADDRESSES);
+        }
         return UserService.toSummary(addresses.save(Address.create(currentUser.id(), details)));
     }
 

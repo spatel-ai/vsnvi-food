@@ -63,7 +63,12 @@ class JwtService implements AccessTokenIssuer, TokenAuthenticator {
     @Override
     public AuthenticatedUser authenticate(String token) {
         try {
-            var claims = parser.parseSignedClaims(token).getPayload();
+            var jws = parser.parseSignedClaims(token);
+            if (!Jwts.SIG.HS256.getId().equals(jws.getHeader().getAlgorithm())) {
+                // Pinned: a longer key must not make HS384/HS512 tokens acceptable (ADR-002).
+                throw InvalidTokenException.invalid();
+            }
+            var claims = jws.getPayload();
             var role = claims.get(ROLE_CLAIM, String.class);
             if (role == null || claims.getSubject() == null || claims.getExpiration() == null) {
                 throw InvalidTokenException.invalid();

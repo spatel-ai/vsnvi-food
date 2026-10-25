@@ -10,6 +10,8 @@ public interface AddressRepository {
 
     void delete(Address address);
 
+    long countByUserId(UUID userId);
+
     List<Address> findAllByUserIdOrderByCreatedAtAsc(UUID userId);
 
     /** The ownership check: empty for another user's address. */

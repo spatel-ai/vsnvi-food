@@ -16,8 +16,12 @@ import com.vsnvi.vsnvi_food.common.security.TokenAuthenticator;
 import com.vsnvi.vsnvi_food.user.api.Role;
 import com.vsnvi.vsnvi_food.user.api.UserBlocked;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -153,6 +157,35 @@ class AuthModuleTests {
         scenario.publish(event).andWaitForStateChange(() -> isRevoked(tokens.refreshToken()));
 
         assertThat(authService.revokeAllTokensOf(user.id())).isZero();
+    }
+
+    @Test
+    void should_rotate_once_when_same_refresh_token_is_used_concurrently() throws Exception {
+        var email = email();
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var token = authService.login(email, PASSWORD).refreshToken();
+        var start = new CountDownLatch(1);
+
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var attempts = List.of(pool.submit(() -> refreshAfter(start, token)), pool.submit(() -> refreshAfter(start, token)));
+            start.countDown();
+            var outcomes = new ArrayList<String>();
+            for (var attempt : attempts) {
+                outcomes.add(attempt.get(30, TimeUnit.SECONDS));
+            }
+            // The row lock serialises them: one rotates, the other sees a used token and revokes the family.
+            assertThat(outcomes).containsExactlyInAnyOrder("rotated", "rejected");
+        }
+    }
+
+    private String refreshAfter(CountDownLatch start, String token) throws InterruptedException {
+        start.await();
+        try {
+            authService.refresh(token);
+            return "rotated";
+        } catch (InvalidRefreshTokenException ex) {
+            return "rejected";
+        }
     }
 
     private Boolean isRevoked(String rawRefreshToken) {

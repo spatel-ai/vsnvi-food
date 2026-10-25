@@ -110,6 +110,8 @@ Any framework error whose status has no code below is returned as `MALFORMED_REQ
 | `IDEMPOTENCY_KEY_CONFLICT`  | 409  | Same key, different payload                |
 | `PAYLOAD_TOO_LARGE`         | 413  | Request body or upload too large           |
 | `UNSUPPORTED_MEDIA_TYPE`    | 415  | Request `Content-Type` not supported       |
+| `CANNOT_BLOCK_ADMIN`        | 422  | Admins can't be blocked (prevents admin lockout) |
+| `ADDRESS_LIMIT_REACHED`     | 422  | A customer may keep at most 20 addresses   |
 | `CART_RESTAURANT_MISMATCH`  | 422  | Item from a different restaurant           |
 | `COUPON_INVALID`            | 422  | Unknown, inactive or expired coupon        |
 | `COUPON_NOT_APPLICABLE`     | 422  | Minimum subtotal, restaurant or first-order rule not met |

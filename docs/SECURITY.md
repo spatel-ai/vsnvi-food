@@ -51,6 +51,13 @@ sequenceDiagram
   - Minimum length is 8.
   - Login is rate-limited per IP and per account.
 - **Login errors** are generic ("invalid credentials"). They never reveal whether an email exists.
+- **Password length:** BCrypt accepts at most 72 *bytes*, so registration also checks the UTF-8
+  byte length (`@MaxUtf8Bytes(72)`), and login answers an over-long password with
+  `INVALID_CREDENTIALS` instead of reaching BCrypt.
+- **Algorithm pinning:** only `HS256` access tokens are accepted, even if a longer key is
+  configured later; `alg: none` is always rejected.
+- **Credential endpoints ignore the bearer header:** `POST /auth/register`, `/login` and `/refresh`
+  never read `Authorization`, so a client that still sends its expired access token can refresh.
 
 ## 2. Roles and authorization
 
@@ -78,6 +85,7 @@ sequenceDiagram
 - **Ownership failures return `404`**, so the API doesn't reveal that the resource exists.
   Role failures return `403`.
 - **Clients never choose privileged roles.** Registration can't create an `ADMIN`.
+- **Admins can't be blocked** (`422 CANNOT_BLOCK_ADMIN`), so the platform can't lose its last admin.
 - **First admin:** on startup, an `AdminBootstrap` runner in `auth` creates an `ADMIN` from
   `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` **only if no admin exists yet**. It does
   nothing when those variables are unset. Further admins are created by an existing admin
@@ -127,7 +135,7 @@ sequenceDiagram
   - `application*.yaml` contains no secret values, only placeholders. **Exception:** the `local`
     profile (the default when no profile is active) has throwaway defaults that match
     `compose.yaml`, so a fresh clone runs with no setup. They're useless outside a developer's
-    machine. `dev` and `prod` have no defaults for secrets, and deployments must set
+    machine, and `LocalProfileGuard` refuses to start `local` against a non-local database. `dev` and `prod` have no defaults for secrets, and deployments must set
     `SPRING_PROFILES_ACTIVE` explicitly.
   - `.env` and `application-local.yaml` are git-ignored. `.env.example` is committed with
     local-only values and no real credentials.

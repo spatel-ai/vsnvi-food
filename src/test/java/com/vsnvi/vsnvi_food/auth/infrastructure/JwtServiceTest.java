@@ -4,12 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vsnvi.vsnvi_food.common.security.InvalidTokenException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.WeakKeyException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Base64;
+import java.util.Date;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -81,6 +85,39 @@ class JwtServiceTest {
     void should_reject_as_invalid_when_token_is_garbage() {
         assertThatThrownBy(() -> service(KEY, "vsnvi-food", NOW).authenticate("not.a.jwt"))
                 .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void should_reject_as_invalid_when_token_is_unsigned_alg_none() {
+        var unsigned = Jwts.builder()
+                .subject(USER_ID.toString())
+                .claim("role", "ADMIN")
+                .issuer("vsnvi-food")
+                .expiration(Date.from(NOW.plusSeconds(600)))
+                .compact();
+
+        assertThatThrownBy(() -> service(KEY, "vsnvi-food", NOW).authenticate(unsigned))
+                .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void should_reject_as_invalid_when_signed_with_hs512_even_if_key_is_long_enough() {
+        var longKey = Base64.getEncoder().encodeToString(new byte[64]);
+        var hs512 = Jwts.builder()
+                .subject(USER_ID.toString())
+                .claim("role", "ADMIN")
+                .issuer("vsnvi-food")
+                .expiration(Date.from(NOW.plusSeconds(600)))
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(longKey)), Jwts.SIG.HS512)
+                .compact();
+
+        assertThatThrownBy(() -> service(longKey, "vsnvi-food", NOW).authenticate(hs512))
+                .isInstanceOf(InvalidTokenException.class);
+        assertThat(service(longKey, "vsnvi-food", NOW).authenticate(service(longKey, "vsnvi-food", NOW)
+                                .issue(USER_ID, "ADMIN")
+                                .token())
+                        .role())
+                .isEqualTo("ADMIN");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.vsnvi.vsnvi_food.auth.application;
 
+import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.user.api.Role;
 import com.vsnvi.vsnvi_food.user.api.UserApi;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,17 @@ class AdminBootstrap implements ApplicationRunner {
                     "Admin bootstrap skipped: an admin already exists. Remove ADMIN_BOOTSTRAP_* from the environment.");
             return;
         }
-        var admin = authService.createAccount(email, password, "Administrator", null, Role.ADMIN);
-        log.info("Admin bootstrap created admin user {}", admin.id());
+        if (!email.contains("@")) {
+            log.warn("Admin bootstrap skipped: ADMIN_BOOTSTRAP_EMAIL is not an email address");
+            return;
+        }
+        try {
+            var admin = authService.createAccount(email, password, "Administrator", null, Role.ADMIN);
+            log.info("Admin bootstrap created admin user {}", admin.id());
+        } catch (DomainException ex) {
+            // A weak password, or the email already belongs to a non-admin (or another instance won the race).
+            // Never block startup over it.
+            log.warn("Admin bootstrap skipped: {}", ex.getMessage());
+        }
     }
 }

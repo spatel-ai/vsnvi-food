@@ -15,6 +15,9 @@ import com.vsnvi.vsnvi_food.auth.domain.InvalidCredentialsException;
 import com.vsnvi.vsnvi_food.auth.domain.OpaqueTokens;
 import com.vsnvi.vsnvi_food.auth.domain.RefreshToken;
 import com.vsnvi.vsnvi_food.auth.domain.RefreshTokenRepository;
+import com.vsnvi.vsnvi_food.common.domain.DomainException;
+import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
+import com.vsnvi.vsnvi_food.common.domain.ValidationException;
 import com.vsnvi.vsnvi_food.common.security.CurrentUser;
 import com.vsnvi.vsnvi_food.user.api.NewUser;
 import com.vsnvi.vsnvi_food.user.api.Role;
@@ -120,5 +123,34 @@ class AuthServiceTest {
         new AdminBootstrap(userApi, authService, "", "").run(mock(ApplicationArguments.class));
 
         then(userApi).should(never()).createUser(any());
+    }
+
+    @Test
+    void should_return_invalid_credentials_not_crash_when_password_exceeds_72_bytes() {
+        var emoji = "\uD83D\uDE00".repeat(30); // 60 chars, 120 bytes
+
+        assertThatThrownBy(() -> authService.login("a@example.com", emoji))
+                .isInstanceOf(InvalidCredentialsException.class);
+        then(userApi).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void should_reject_weak_password_for_any_account_when_creating() {
+        assertThatThrownBy(() -> authService.createAccount("a@example.com", "short", "A", null, Role.ADMIN))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> authService.createAccount("a@example.com", "\uD83D\uDE00".repeat(19), "A", null, Role.ADMIN))
+                .isInstanceOf(ValidationException.class);
+        then(userApi).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void should_skip_bootstrap_without_failing_startup_when_email_is_taken() {
+        given(userApi.existsWithRole(Role.ADMIN)).willReturn(false);
+        given(userApi.createUser(any())).willThrow(new DomainException(ErrorCode.EMAIL_ALREADY_REGISTERED, "taken") {});
+
+        new AdminBootstrap(userApi, authService, "admin@example.com", "admin-pass")
+                .run(mock(ApplicationArguments.class));
+
+        then(credentials).shouldHaveNoInteractions();
     }
 }

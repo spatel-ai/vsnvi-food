@@ -111,7 +111,7 @@ class SqlRestaurantSearch implements RestaurantSearch {
                 }
                 case SORT_RATING -> clauses.add("r.rating " + direction + " NULLS LAST");
                 case SORT_NAME -> clauses.add("r.name " + direction);
-                default -> throw new ValidationException("Unsupported sort field: " + order.getProperty());
+                default -> throw new ValidationException("Unsupported sort field; allowed: distance, rating, name");
             }
         }
         if (clauses.isEmpty()) {

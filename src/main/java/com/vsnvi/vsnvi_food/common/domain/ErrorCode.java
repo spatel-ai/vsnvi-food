@@ -23,6 +23,8 @@ public enum ErrorCode {
     IDEMPOTENCY_KEY_CONFLICT(409, "Idempotency key conflict"),
     PAYLOAD_TOO_LARGE(413, "Payload too large"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
+    CANNOT_BLOCK_ADMIN(422, "Cannot block an admin"),
+    ADDRESS_LIMIT_REACHED(422, "Address limit reached"),
     CART_RESTAURANT_MISMATCH(422, "Cart restaurant mismatch"),
     COUPON_INVALID(422, "Coupon invalid"),
     COUPON_NOT_APPLICABLE(422, "Coupon not applicable"),
