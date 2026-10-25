@@ -59,7 +59,7 @@ Modules are listed in build order: a module comes after every module it calls or
 - [x] Security filter chain, exact-path public allowlist, `CurrentUser`, ProblemDetail 401/403 (in `common`, ADR-006)
 - [x] `JwtService` (jjwt) implementing `TokenAuthenticator`
 - [x] Register, login (rejects blocked users), refresh (rotation and reuse detection), logout
-- [ ] Login rate limiting (per IP and per account) — needs Redis (Phase 0 dependency)
+- [x] Login rate limiting (per IP and per account; `common` `RateLimiter` on Redis)
 - [x] `AdminBootstrap`: first admin from `ADMIN_BOOTSTRAP_*` env vars
 - [x] Event: `UserRegistered`
 - [x] `TokenAuthenticator` implementation (`JwtService`); the STOMP `CONNECT` interceptor that calls it comes with the tracking work

@@ -2,6 +2,8 @@ package com.vsnvi.vsnvi_food.auth.application;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -18,6 +20,7 @@ import com.vsnvi.vsnvi_food.auth.domain.RefreshTokenRepository;
 import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
 import com.vsnvi.vsnvi_food.common.domain.ValidationException;
+import com.vsnvi.vsnvi_food.common.ratelimit.RateLimiter;
 import com.vsnvi.vsnvi_food.common.security.CurrentUser;
 import com.vsnvi.vsnvi_food.user.api.NewUser;
 import com.vsnvi.vsnvi_food.user.api.Role;
@@ -59,14 +62,23 @@ class AuthServiceTest {
             new CurrentUser(),
             events,
             Clock.fixed(NOW, ZoneOffset.UTC),
+            new LoginRateLimits(allowingLimiter(), 30, Duration.ofMinutes(5), 10, Duration.ofMinutes(15)),
             Duration.ofDays(30));
+
+    private static RateLimiter allowingLimiter() {
+        var limiter = mock(RateLimiter.class);
+        var allowed = new RateLimiter.Decision(true, Duration.ZERO);
+        given(limiter.hit(anyString(), anyInt(), any())).willReturn(allowed);
+        given(limiter.peek(anyString(), anyInt(), any())).willReturn(allowed);
+        return limiter;
+    }
 
     @Test
     void should_hide_blocked_status_when_password_is_wrong() {
         given(userApi.findByEmail("a@example.com")).willReturn(Optional.of(BLOCKED));
         given(credentials.findByUserId(USER_ID)).willReturn(Optional.of(Credential.create(USER_ID, "right")));
 
-        assertThatThrownBy(() -> authService.login("a@example.com", "wrong"))
+        assertThatThrownBy(() -> authService.login("a@example.com", "wrong", "127.0.0.1"))
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 
@@ -75,7 +87,7 @@ class AuthServiceTest {
         given(userApi.findByEmail("a@example.com")).willReturn(Optional.of(BLOCKED));
         given(credentials.findByUserId(USER_ID)).willReturn(Optional.of(Credential.create(USER_ID, "right")));
 
-        assertThatThrownBy(() -> authService.login("a@example.com", "right"))
+        assertThatThrownBy(() -> authService.login("a@example.com", "right", "127.0.0.1"))
                 .isInstanceOf(AccountBlockedException.class);
         then(accessTokens).shouldHaveNoInteractions();
     }
@@ -129,7 +141,7 @@ class AuthServiceTest {
     void should_return_invalid_credentials_not_crash_when_password_exceeds_72_bytes() {
         var emoji = "\uD83D\uDE00".repeat(30); // 60 chars, 120 bytes
 
-        assertThatThrownBy(() -> authService.login("a@example.com", emoji))
+        assertThatThrownBy(() -> authService.login("a@example.com", emoji, "127.0.0.1"))
                 .isInstanceOf(InvalidCredentialsException.class);
         then(userApi).shouldHaveNoInteractions();
     }

@@ -1,6 +1,8 @@
 package com.vsnvi.vsnvi_food.auth.api.web;
 
 import static com.vsnvi.vsnvi_food.common.security.WebSecurityTestConfig.bearer;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -14,11 +16,13 @@ import com.vsnvi.vsnvi_food.auth.domain.InvalidCredentialsException;
 import com.vsnvi.vsnvi_food.auth.domain.InvalidRefreshTokenException;
 import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
+import com.vsnvi.vsnvi_food.common.ratelimit.RateLimitedException;
 import com.vsnvi.vsnvi_food.common.security.WebSecurityTestConfig;
 import com.vsnvi.vsnvi_food.common.web.GlobalExceptionHandler;
 import com.vsnvi.vsnvi_food.user.api.Role;
 import com.vsnvi.vsnvi_food.user.api.UserStatus;
 import com.vsnvi.vsnvi_food.user.api.UserSummary;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -119,7 +123,7 @@ class AuthControllerTest {
 
     @Test
     void should_return_tokens_when_login_succeeds() throws Exception {
-        given(authService.login("asha@example.com", "s3cret-pass")).willReturn(TOKENS);
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willReturn(TOKENS);
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -133,7 +137,7 @@ class AuthControllerTest {
 
     @Test
     void should_return_invalid_credentials_when_login_fails() throws Exception {
-        given(authService.login("asha@example.com", "s3cret-pass")).willThrow(new InvalidCredentialsException());
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willThrow(new InvalidCredentialsException());
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -144,13 +148,24 @@ class AuthControllerTest {
 
     @Test
     void should_return_account_blocked_when_user_is_blocked() throws Exception {
-        given(authService.login("asha@example.com", "s3cret-pass")).willThrow(new AccountBlockedException());
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willThrow(new AccountBlockedException());
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_BLOCKED"));
+    }
+
+    @Test
+    void should_return_too_many_requests_with_retry_after_when_rate_limited() throws Exception {
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString()))
+                .willThrow(new RateLimitedException(Duration.ofSeconds(90)));
+
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginBody()))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "90"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
     }
 
     @Test

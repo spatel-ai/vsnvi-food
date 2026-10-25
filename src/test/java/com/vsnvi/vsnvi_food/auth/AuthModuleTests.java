@@ -11,6 +11,7 @@ import com.vsnvi.vsnvi_food.auth.domain.InvalidCredentialsException;
 import com.vsnvi.vsnvi_food.auth.domain.InvalidRefreshTokenException;
 import com.vsnvi.vsnvi_food.auth.domain.OpaqueTokens;
 import com.vsnvi.vsnvi_food.auth.domain.RefreshTokenRepository;
+import com.vsnvi.vsnvi_food.common.ratelimit.RateLimitedException;
 import com.vsnvi.vsnvi_food.common.security.AuthenticatedUser;
 import com.vsnvi.vsnvi_food.common.security.TokenAuthenticator;
 import com.vsnvi.vsnvi_food.user.api.Role;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -84,7 +86,7 @@ class AuthModuleTests {
         var email = email();
         var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
 
-        var tokens = authService.login(email.toUpperCase(), PASSWORD);
+        var tokens = authService.login(email.toUpperCase(), PASSWORD, "127.0.0.1");
 
         var principal = tokenAuthenticator.authenticate(tokens.accessToken());
         assertThat(principal.id()).isEqualTo(user.id());
@@ -97,10 +99,10 @@ class AuthModuleTests {
         var email = email();
         authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
 
-        assertThatThrownBy(() -> authService.login(email, "wrong-password"))
+        assertThatThrownBy(() -> authService.login(email, "wrong-password", "127.0.0.1"))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
-        assertThatThrownBy(() -> authService.login("nobody@example.com", PASSWORD))
+        assertThatThrownBy(() -> authService.login("nobody@example.com", PASSWORD, "127.0.0.1"))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
@@ -109,7 +111,7 @@ class AuthModuleTests {
     void should_rotate_and_revoke_family_when_old_refresh_token_is_reused() {
         var email = email();
         authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
-        var first = authService.login(email, PASSWORD);
+        var first = authService.login(email, PASSWORD, "127.0.0.1");
 
         var second = authService.refresh(first.refreshToken());
         assertThat(second.refreshToken()).isNotEqualTo(first.refreshToken());
@@ -125,7 +127,7 @@ class AuthModuleTests {
     void should_revoke_family_when_owner_logs_out() {
         var email = email();
         var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
-        var tokens = authService.login(email, PASSWORD);
+        var tokens = authService.login(email, PASSWORD, "127.0.0.1");
 
         signInAs(user.id());
         authService.logout(tokens.refreshToken());
@@ -138,7 +140,7 @@ class AuthModuleTests {
     void should_ignore_logout_when_refresh_token_belongs_to_someone_else() {
         var email = email();
         authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
-        var tokens = authService.login(email, PASSWORD);
+        var tokens = authService.login(email, PASSWORD, "127.0.0.1");
 
         signInAs(UUID.randomUUID());
         authService.logout(tokens.refreshToken());
@@ -150,7 +152,7 @@ class AuthModuleTests {
     void should_revoke_tokens_idempotently_when_UserBlocked_arrives_twice(Scenario scenario) {
         var email = email();
         var user = authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
-        var tokens = authService.login(email, PASSWORD);
+        var tokens = authService.login(email, PASSWORD, "127.0.0.1");
         var event = new UserBlocked(user.id(), "fraud", Instant.now());
 
         scenario.publish(event).andWaitForStateChange(() -> isRevoked(tokens.refreshToken()));
@@ -163,7 +165,7 @@ class AuthModuleTests {
     void should_rotate_once_when_same_refresh_token_is_used_concurrently() throws Exception {
         var email = email();
         authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
-        var token = authService.login(email, PASSWORD).refreshToken();
+        var token = authService.login(email, PASSWORD, "127.0.0.1").refreshToken();
         var start = new CountDownLatch(1);
 
         try (var pool = Executors.newFixedThreadPool(2)) {
@@ -186,6 +188,64 @@ class AuthModuleTests {
         } catch (InvalidRefreshTokenException ex) {
             return "rejected";
         }
+    }
+
+    @Test
+    void should_rate_limit_account_after_ten_failures_even_with_right_password() {
+        var email = email();
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var ip = randomIp();
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> authService.login(email, "wrong-password", ip))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+
+        assertThatThrownBy(() -> authService.login(email, PASSWORD, randomIp())).isInstanceOf(RateLimitedException.class);
+    }
+
+    @Test
+    void should_rate_limit_unknown_email_like_a_real_account() {
+        var unknown = email();
+        var ip = randomIp();
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> authService.login(unknown, PASSWORD, ip)).isInstanceOf(InvalidCredentialsException.class);
+        }
+
+        assertThatThrownBy(() -> authService.login(unknown, PASSWORD, ip)).isInstanceOf(RateLimitedException.class);
+    }
+
+    @Test
+    void should_reset_failures_when_login_succeeds() {
+        var email = email();
+        authService.register(email, PASSWORD, "Asha", null, Role.CUSTOMER);
+        var ip = randomIp();
+        for (int i = 0; i < 9; i++) {
+            assertThatThrownBy(() -> authService.login(email, "wrong-password", ip))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+        authService.login(email, PASSWORD, ip);
+
+        for (int i = 0; i < 9; i++) {
+            assertThatThrownBy(() -> authService.login(email, "wrong-password", randomIp()))
+                    .isInstanceOf(InvalidCredentialsException.class);
+        }
+        assertThat(authService.login(email, PASSWORD, randomIp()).accessToken()).isNotBlank();
+    }
+
+    @Test
+    void should_rate_limit_client_ip_after_thirty_attempts_across_accounts() {
+        var ip = randomIp();
+        for (int i = 0; i < 30; i++) {
+            var attempt = email();
+            assertThatThrownBy(() -> authService.login(attempt, PASSWORD, ip)).isInstanceOf(InvalidCredentialsException.class);
+        }
+
+        assertThatThrownBy(() -> authService.login(email(), PASSWORD, ip)).isInstanceOf(RateLimitedException.class);
+    }
+
+    private static String randomIp() {
+        var r = ThreadLocalRandom.current();
+        return "10." + r.nextInt(256) + "." + r.nextInt(256) + "." + r.nextInt(1, 255);
     }
 
     private Boolean isRevoked(String rawRefreshToken) {

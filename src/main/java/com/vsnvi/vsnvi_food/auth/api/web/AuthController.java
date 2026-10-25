@@ -4,6 +4,7 @@ import com.vsnvi.vsnvi_food.auth.application.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +38,9 @@ class AuthController {
     @PostMapping("/login")
     @SecurityRequirements
     @Operation(summary = "Log in and get access and refresh tokens", operationId = "login")
-    TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return TokenResponse.from(authService.login(request.email(), request.password()));
+    TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        // The client address as the servlet container sees it; behind a proxy, configure forward-headers-strategy.
+        return TokenResponse.from(authService.login(request.email(), request.password(), http.getRemoteAddr()));
     }
 
     @PostMapping("/refresh")

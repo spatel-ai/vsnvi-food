@@ -2,6 +2,7 @@ package com.vsnvi.vsnvi_food.common.web;
 
 import com.vsnvi.vsnvi_food.common.domain.DomainException;
 import com.vsnvi.vsnvi_food.common.domain.ErrorCode;
+import com.vsnvi.vsnvi_food.common.ratelimit.RateLimitedException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DomainException.class)
     ProblemDetail handleDomain(DomainException ex) {
         return problem(ex.errorCode(), ex.getMessage());
+    }
+
+    @ExceptionHandler(RateLimitedException.class)
+    ResponseEntity<ProblemDetail> handleRateLimited(RateLimitedException ex) {
+        return ResponseEntity.status(ex.errorCode().status())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.retryAfterSeconds()))
+                .body(problem(ex.errorCode(), ex.getMessage()));
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

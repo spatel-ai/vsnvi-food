@@ -49,7 +49,16 @@ sequenceDiagram
 - **Passwords:**
   - Hashed with BCrypt (strength 12) via `DelegatingPasswordEncoder`.
   - Minimum length is 8.
-  - Login is rate-limited per IP and per account.
+  - Login is rate-limited per IP and per account (`auth.login-rate-limit.*`, Redis
+    `ratelimit:login:*`):
+    - every attempt counts against the client IP (30 per 5 minutes);
+    - failed attempts count against the account (10 per 15 minutes), and a successful login resets
+      the count. Unknown emails are counted the same way, so the limit doesn't reveal which accounts
+      exist. The key holds a SHA-256 of the email, never the email;
+    - over a limit returns `429 RATE_LIMITED` with `Retry-After`;
+    - if Redis is unavailable the limiter allows the request and logs a warning (fails open);
+    - in dev and prod, `server.forward-headers-strategy: native` takes the client IP from
+      `X-Forwarded-For` only when the request comes from an internal proxy.
 - **Login errors** are generic ("invalid credentials"). They never reveal whether an email exists.
 - **Password length:** BCrypt accepts at most 72 *bytes*, so registration also checks the UTF-8
   byte length (`@MaxUtf8Bytes(72)`), and login answers an over-long password with

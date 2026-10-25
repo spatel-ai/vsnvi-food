@@ -41,6 +41,7 @@ public class AuthService {
     private final ApplicationEventPublisher events;
     private final Clock clock;
     private final Duration refreshTokenTtl;
+    private final LoginRateLimits loginRateLimits;
 
     /** Compared against when the email is unknown, so a missing account takes as long as a wrong password. */
     private final String dummyHash;
@@ -54,6 +55,7 @@ public class AuthService {
             CurrentUser currentUser,
             ApplicationEventPublisher events,
             Clock clock,
+            LoginRateLimits loginRateLimits,
             @Value("${auth.jwt.refresh-token-ttl}") Duration refreshTokenTtl) {
         this.userApi = userApi;
         this.credentials = credentials;
@@ -64,6 +66,7 @@ public class AuthService {
         this.events = events;
         this.clock = clock;
         this.refreshTokenTtl = refreshTokenTtl;
+        this.loginRateLimits = loginRateLimits;
         this.dummyHash = passwordEncoder.encode(OpaqueTokens.generate());
     }
 
@@ -88,10 +91,13 @@ public class AuthService {
         return user;
     }
 
+    /** Rate-limited per client IP and per account (failed attempts); over a limit returns {@code RATE_LIMITED}. */
     @Transactional
-    public Tokens login(String email, String password) {
+    public Tokens login(String email, String password, String clientIp) {
+        loginRateLimits.checkAttempt(clientIp, email);
         if (!PasswordPolicy.fitsBcrypt(password)) {
             // No stored password can be this long, and BCrypt would throw on it.
+            loginRateLimits.recordFailure(email);
             throw new InvalidCredentialsException();
         }
         var user = userApi.findByEmail(email).orElse(null);
@@ -100,8 +106,10 @@ public class AuthService {
         var hash = credential == null ? dummyHash : credential.getPasswordHash();
         var matches = passwordEncoder.matches(password, hash);
         if (credential == null || !matches) {
+            loginRateLimits.recordFailure(email);
             throw new InvalidCredentialsException();
         }
+        loginRateLimits.recordSuccess(email);
         // Checked only after the password, so a blocked status never reveals that an account exists.
         if (user.isBlocked()) {
             throw new AccountBlockedException();

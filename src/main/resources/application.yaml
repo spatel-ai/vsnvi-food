@@ -81,6 +81,11 @@ auth:
     issuer: ${JWT_ISSUER:vsnvi-food}
     access-token-ttl: 15m
     refresh-token-ttl: 30d
+  login-rate-limit:
+    per-ip: 30                 # attempts per client IP per window
+    ip-window: 5m
+    failures-per-account: 10   # failed attempts per account per window; a success resets it
+    account-window: 15m
 
 pricing:
   tax-percent: 5
@@ -180,6 +185,11 @@ auth:
   admin-bootstrap:
     email: ${ADMIN_BOOTSTRAP_EMAIL:}
     password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+
+# Behind a load balancer: take the client IP from X-Forwarded-For, trusted only from internal proxies
+# (Tomcat's RemoteIpValve defaults), so per-IP rate limits see real clients and can't be spoofed.
+server:
+  forward-headers-strategy: native
 
 payment:
   razorpay:
