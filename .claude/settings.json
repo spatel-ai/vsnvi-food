@@ -18,5 +18,20 @@
       "Read(./**/application-dev-local*.yaml)",
       "Read(./**/application-dev-local*.yml)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-java.sh",
+            "timeout": 120,
+            "statusMessage": "Formatting Java with Spotless"
+          }
+        ]
+      }
+    ]
   }
 }

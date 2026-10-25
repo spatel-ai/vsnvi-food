@@ -42,9 +42,12 @@ you work on matching files.
 - **Run locally against a throwaway Postgres container:** `./mvnw spring-boot:test-run`, which
   starts `TestVsnviFoodApplication` with `TestcontainersConfiguration`.
 - **Compile only:** `./mvnw -DskipTests compile`.
+- **Format:** `./mvnw spotless:apply` (palantir-java-format, unused imports removed);
+  `./mvnw spotless:check` to check only. A PostToolUse hook (`.claude/hooks/format-java.sh`)
+  formats each Java file Claude writes or edits, so don't hand-format.
 
-Tests and the local run need a running Docker daemon (Testcontainers). There is no linter or
-formatter configured yet.
+Tests and the local run need a running Docker daemon (Testcontainers). There is no linter
+configured yet.
 
 ## Architecture in brief
 
