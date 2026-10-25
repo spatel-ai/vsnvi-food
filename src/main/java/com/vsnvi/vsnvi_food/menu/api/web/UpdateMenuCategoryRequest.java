@@ -6,5 +6,7 @@ import jakarta.validation.constraints.Size;
 
 /** Partial update: omitted fields stay unchanged. */
 record UpdateMenuCategoryRequest(
-        @Size(min = 1, max = 80) @Pattern(regexp = ".*\\S.*", message = "must not be blank") String name,
+        @Size(min = 1, max = 80) @Pattern(regexp = ".*\\S.*", message = "must not be blank")
+        String name,
+
         @PositiveOrZero Integer position) {}

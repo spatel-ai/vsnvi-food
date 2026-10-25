@@ -8,14 +8,14 @@ Modules are listed in build order: a module comes after every module it calls or
 
 ## Phase 0 — Foundation
 
-- [ ] Project docs and Claude rules (architecture, API design, database design, security, ADR-001 to ADR-005)
+- [x] Project docs and Claude rules (architecture, API design, database design, security, ADR-001 to ADR-006)
 - [x] `application.yaml` profiles (`local`, `test`, `prod`) with Postgres and Redis config from env
 - [x] `compose.yaml` for local Postgres, Redis and Mailpit; `.env.example`
 - [ ] Dependencies: Spring Modulith 2.x BOM (`spring-modulith-starter-core`, `-starter-jpa`, `-starter-test`), Redis, WebSocket, jjwt (`jjwt-api`, `jjwt-impl`, a JSON module; see ADR-002), Razorpay SDK (or HTTP client), Testcontainers Redis
   - [x] Spring Modulith 2.1.2 BOM and starters; jjwt 0.13.0 with `jjwt-gson` (ADR-002)
   - [x] Redis (`spring-boot-starter-data-redis`), WebSocket (`spring-boot-starter-websocket`), Testcontainers Redis (a `GenericContainer` with `@ServiceConnection(name = "redis")`; Testcontainers 2 has no Redis module)
   - [ ] Razorpay SDK (or HTTP client), with the payment module
-- [ ] `common` kernel
+- [x] `common` kernel
   - [x] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
     - [x] `@DataJpaTest` for audit timestamps from a fixed `Clock` (`UserPersistenceTest`)
   - [x] `Money` value object and JPA mapping
@@ -35,13 +35,13 @@ Modules are listed in build order: a module comes after every module it calls or
   - [x] `OpenApiCustomizer`: shared `ProblemDetail` schema and default error responses
   - [x] `@IdempotencyKeyHeader` meta-annotation
   - [x] Profile config: enabled in `local`/`dev`, disabled in `prod`; security allowlist in non-prod
-  - [ ] CI: export `target/openapi.json` as a build artifact
-- [ ] Flyway baseline migration
+  - [x] CI: export `target/openapi.json` as a build artifact
+- [x] Flyway baseline migration (`V1__common_create_event_publication.sql` is the first version; no `baseline-on-migrate`, the schema always starts empty)
 - [x] Testcontainers integration test base (Postgres and Redis)
 - [x] Spring Modulith
   - [x] `ApplicationModules.verify()` test, `common` as an open module
   - [x] `@NamedInterface("api")` conventions and the check that `api.web` isn't exposed (`ModularityTests`)
-- [ ] CI pipeline (`./mvnw verify`)
+- [x] CI pipeline (`.github/workflows/ci.yml`: `spotless:check`, `./mvnw verify`, OpenAPI artifact)
 
 ## Phase 1 — Users, auth, restaurants, menus
 

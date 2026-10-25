@@ -19,9 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.jdbc.core.simple.JdbcClient;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -182,7 +182,8 @@ class IdempotencyServiceTests {
     }
 
     private void expireAll() {
-        jdbc.sql("UPDATE idempotency_keys SET expires_at = now() - interval '1 second'").update();
+        jdbc.sql("UPDATE idempotency_keys SET expires_at = now() - interval '1 second'")
+                .update();
     }
 
     private static void await(CountDownLatch latch) {

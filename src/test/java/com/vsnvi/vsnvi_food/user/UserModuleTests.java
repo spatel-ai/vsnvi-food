@@ -99,7 +99,8 @@ class UserModuleTests {
 
     @Test
     void should_refuse_to_block_an_admin_including_yourself() {
-        var admin = userApi.createUser(new NewUser("admin-" + UUID.randomUUID() + "@example.com", "Admin", null, Role.ADMIN));
+        var admin = userApi.createUser(
+                new NewUser("admin-" + UUID.randomUUID() + "@example.com", "Admin", null, Role.ADMIN));
         signInAs(admin.id(), "ADMIN");
 
         assertThatThrownBy(() -> userService.block(admin.id(), "oops"))
@@ -110,7 +111,8 @@ class UserModuleTests {
 
     @Test
     void should_refuse_more_than_twenty_addresses_per_customer() {
-        var customer = userApi.createUser(new NewUser("many-" + UUID.randomUUID() + "@example.com", "Many", null, Role.CUSTOMER));
+        var customer = userApi.createUser(
+                new NewUser("many-" + UUID.randomUUID() + "@example.com", "Many", null, Role.CUSTOMER));
         signInAs(customer.id(), "CUSTOMER");
         var home = new Address.Details("Home", "12 MG Road", null, "Bengaluru", "Karnataka", "560001", 12.97, 77.59);
         for (int i = 0; i < 20; i++) {

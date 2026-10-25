@@ -169,7 +169,8 @@ class AuthModuleTests {
         var start = new CountDownLatch(1);
 
         try (var pool = Executors.newFixedThreadPool(2)) {
-            var attempts = List.of(pool.submit(() -> refreshAfter(start, token)), pool.submit(() -> refreshAfter(start, token)));
+            var attempts = List.of(
+                    pool.submit(() -> refreshAfter(start, token)), pool.submit(() -> refreshAfter(start, token)));
             start.countDown();
             var outcomes = new ArrayList<String>();
             for (var attempt : attempts) {
@@ -200,7 +201,8 @@ class AuthModuleTests {
                     .isInstanceOf(InvalidCredentialsException.class);
         }
 
-        assertThatThrownBy(() -> authService.login(email, PASSWORD, randomIp())).isInstanceOf(RateLimitedException.class);
+        assertThatThrownBy(() -> authService.login(email, PASSWORD, randomIp()))
+                .isInstanceOf(RateLimitedException.class);
     }
 
     @Test
@@ -208,7 +210,8 @@ class AuthModuleTests {
         var unknown = email();
         var ip = randomIp();
         for (int i = 0; i < 10; i++) {
-            assertThatThrownBy(() -> authService.login(unknown, PASSWORD, ip)).isInstanceOf(InvalidCredentialsException.class);
+            assertThatThrownBy(() -> authService.login(unknown, PASSWORD, ip))
+                    .isInstanceOf(InvalidCredentialsException.class);
         }
 
         assertThatThrownBy(() -> authService.login(unknown, PASSWORD, ip)).isInstanceOf(RateLimitedException.class);
@@ -237,7 +240,8 @@ class AuthModuleTests {
         var ip = randomIp();
         for (int i = 0; i < 30; i++) {
             var attempt = email();
-            assertThatThrownBy(() -> authService.login(attempt, PASSWORD, ip)).isInstanceOf(InvalidCredentialsException.class);
+            assertThatThrownBy(() -> authService.login(attempt, PASSWORD, ip))
+                    .isInstanceOf(InvalidCredentialsException.class);
         }
 
         assertThatThrownBy(() -> authService.login(email(), PASSWORD, ip)).isInstanceOf(RateLimitedException.class);

@@ -13,7 +13,10 @@ import java.util.UUID;
 /** Partial update. A given {@code variants} or {@code addOns} list replaces the whole list ({@code []} clears it). */
 record UpdateMenuItemRequest(
         UUID categoryId,
-        @Size(min = 1, max = 120) @Pattern(regexp = ".*\\S.*", message = "must not be blank") String name,
+
+        @Size(min = 1, max = 120) @Pattern(regexp = ".*\\S.*", message = "must not be blank")
+        String name,
+
         @Size(max = 1000) String description,
         @Valid MoneyInput price,
         Boolean vegetarian,

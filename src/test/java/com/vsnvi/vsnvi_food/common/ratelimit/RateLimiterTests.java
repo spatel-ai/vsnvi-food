@@ -78,12 +78,14 @@ class RateLimiterTests {
         given(broken.execute(any(org.springframework.data.redis.core.script.RedisScript.class), anyList(), anyString()))
                 .willThrow(new RedisConnectionFailureException("down"));
 
-        assertThat(new RateLimiter(broken).hit("k", 1, Duration.ofMinutes(1)).allowed()).isTrue();
+        assertThat(new RateLimiter(broken).hit("k", 1, Duration.ofMinutes(1)).allowed())
+                .isTrue();
     }
 
     @Test
     void should_round_retry_after_up_to_whole_seconds() {
-        assertThat(new RateLimitedException(Duration.ofMillis(1200)).retryAfterSeconds()).isEqualTo(2);
+        assertThat(new RateLimitedException(Duration.ofMillis(1200)).retryAfterSeconds())
+                .isEqualTo(2);
         assertThat(new RateLimitedException(Duration.ZERO).retryAfterSeconds()).isEqualTo(1);
     }
 }

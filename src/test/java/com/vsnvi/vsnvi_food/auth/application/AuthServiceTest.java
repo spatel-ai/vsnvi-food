@@ -150,7 +150,8 @@ class AuthServiceTest {
     void should_reject_weak_password_for_any_account_when_creating() {
         assertThatThrownBy(() -> authService.createAccount("a@example.com", "short", "A", null, Role.ADMIN))
                 .isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> authService.createAccount("a@example.com", "\uD83D\uDE00".repeat(19), "A", null, Role.ADMIN))
+        assertThatThrownBy(() ->
+                        authService.createAccount("a@example.com", "\uD83D\uDE00".repeat(19), "A", null, Role.ADMIN))
                 .isInstanceOf(ValidationException.class);
         then(userApi).shouldHaveNoInteractions();
     }

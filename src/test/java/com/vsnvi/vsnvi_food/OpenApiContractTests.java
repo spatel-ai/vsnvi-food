@@ -45,7 +45,8 @@ class OpenApiContractTests {
         Files.writeString(Path.of("target/openapi.json"), raw);
 
         var operations = operations(json.readTree(raw));
-        var ids = operations.stream().map(op -> op.get("operationId").asString()).toList();
+        var ids =
+                operations.stream().map(op -> op.get("operationId").asString()).toList();
 
         assertThat(operations).hasSizeGreaterThan(30);
         assertThat(ids).doesNotHaveDuplicates().doesNotContainNull();

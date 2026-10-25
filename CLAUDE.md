@@ -54,6 +54,10 @@ you work on matching files.
   `./mvnw spotless:check` to check only. A PostToolUse hook (`.claude/hooks/format-java.sh`)
   formats each Java file Claude writes or edits, so don't hand-format.
 
+- **CI:** `.github/workflows/ci.yml` runs `spotless:check` and `./mvnw verify` on every push and PR,
+  and publishes `target/openapi.json`. Files edited outside Claude's Write/Edit tools skip the
+  format hook, so run `./mvnw spotless:apply` before committing.
+
 Tests and the local run need a running Docker daemon (Testcontainers or Compose). There is no
 linter configured yet.
 

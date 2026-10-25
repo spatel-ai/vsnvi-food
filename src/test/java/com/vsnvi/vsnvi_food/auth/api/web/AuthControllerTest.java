@@ -123,7 +123,8 @@ class AuthControllerTest {
 
     @Test
     void should_return_tokens_when_login_succeeds() throws Exception {
-        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willReturn(TOKENS);
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString()))
+                .willReturn(TOKENS);
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,7 +138,8 @@ class AuthControllerTest {
 
     @Test
     void should_return_invalid_credentials_when_login_fails() throws Exception {
-        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willThrow(new InvalidCredentialsException());
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString()))
+                .willThrow(new InvalidCredentialsException());
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +150,8 @@ class AuthControllerTest {
 
     @Test
     void should_return_account_blocked_when_user_is_blocked() throws Exception {
-        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString())).willThrow(new AccountBlockedException());
+        given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString()))
+                .willThrow(new AccountBlockedException());
 
         mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -162,7 +165,9 @@ class AuthControllerTest {
         given(authService.login(eq("asha@example.com"), eq("s3cret-pass"), anyString()))
                 .willThrow(new RateLimitedException(Duration.ofSeconds(90)));
 
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginBody()))
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginBody()))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string(HttpHeaders.RETRY_AFTER, "90"))
                 .andExpect(jsonPath("$.code").value("RATE_LIMITED"));

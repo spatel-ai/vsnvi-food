@@ -6,5 +6,8 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 record CreateMenuCategoryRequest(
-        @NotBlank @Size(max = 80) @Schema(example = "Biryanis") String name,
-        @PositiveOrZero @Schema(description = "Display order; defaults to the end") Integer position) {}
+        @NotBlank @Size(max = 80) @Schema(example = "Biryanis")
+        String name,
+
+        @PositiveOrZero @Schema(description = "Display order; defaults to the end")
+        Integer position) {}

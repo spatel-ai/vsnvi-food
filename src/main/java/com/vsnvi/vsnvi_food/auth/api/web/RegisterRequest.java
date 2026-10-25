@@ -14,7 +14,9 @@ record RegisterRequest(
         @NotBlank @Email @Size(max = 254) @Schema(example = "asha@example.com")
         String email,
         // BCrypt rejects more than 72 bytes, which multi-byte characters reach before 72 characters.
-        @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH) @MaxUtf8Bytes(PasswordPolicy.MAX_BYTES) String password,
+        @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH) @MaxUtf8Bytes(PasswordPolicy.MAX_BYTES)
+        String password,
+
         @NotBlank @Size(max = 100) String fullName,
 
         @Pattern(regexp = "^\\+[1-9]\\d{7,14}$", message = "must be an E.164 number, e.g. +919876543210")

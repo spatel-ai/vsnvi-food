@@ -13,9 +13,15 @@ import java.util.UUID;
 
 record CreateMenuItemRequest(
         @NotNull UUID categoryId,
-        @NotBlank @Size(max = 120) @Schema(example = "Chicken Biryani") String name,
+
+        @NotBlank @Size(max = 120) @Schema(example = "Chicken Biryani")
+        String name,
+
         @Size(max = 1000) String description,
-        @NotNull @Valid @Schema(description = "Base price; a chosen variant's price replaces it") MoneyInput price,
+
+        @NotNull @Valid @Schema(description = "Base price; a chosen variant's price replaces it")
+        MoneyInput price,
+
         @NotNull Boolean vegetarian,
         @Size(max = MenuItem.MAX_VARIANTS) List<@NotNull @Valid OptionRequest> variants,
         @Size(max = MenuItem.MAX_ADD_ONS) List<@NotNull @Valid OptionRequest> addOns) {

@@ -113,7 +113,8 @@ class JwtServiceTest {
 
         assertThatThrownBy(() -> service(longKey, "vsnvi-food", NOW).authenticate(hs512))
                 .isInstanceOf(InvalidTokenException.class);
-        assertThat(service(longKey, "vsnvi-food", NOW).authenticate(service(longKey, "vsnvi-food", NOW)
+        assertThat(service(longKey, "vsnvi-food", NOW)
+                        .authenticate(service(longKey, "vsnvi-food", NOW)
                                 .issue(USER_ID, "ADMIN")
                                 .token())
                         .role())
