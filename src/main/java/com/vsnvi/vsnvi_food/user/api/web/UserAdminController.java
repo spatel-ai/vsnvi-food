@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
-@Tag(name = "user", description = "The caller's profile and addresses")
+@Tag(name = "user", description = "Profiles, addresses and admin user management")
 class UserAdminController {
 
     private static final Set<String> SORTABLE = Set.of("createdAt", "email", "fullName");

@@ -23,7 +23,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/api/v1/users/me/addresses")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('CUSTOMER')")
-@Tag(name = "user", description = "The caller's profile and addresses")
+@Tag(name = "user", description = "Profiles, addresses and admin user management")
 class AddressController {
 
     private final AddressService addressService;
