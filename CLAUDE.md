@@ -103,10 +103,12 @@ linter configured yet.
 
 ## Repo notes
 
-- **Dependencies:** `pom.xml` has Spring Modulith 2.1.2, jjwt 0.13.0 with `jjwt-gson`
-  (ADR-002; not Spring's OAuth2 resource server) and springdoc. Redis, WebSocket and Razorpay are
-  still to be added (Phase 0 in `docs/PROGRESS.md`). The `spring.data.redis.*` properties and the
-  Compose Redis service are already in place, but nothing uses them until the Redis starter is added.
+- **Dependencies:** `pom.xml` has Spring Modulith 2.1.2, jjwt 0.13.0 with `jjwt-gson` (ADR-002; not
+  Spring's OAuth2 resource server), Redis, WebSocket and springdoc. Razorpay comes with the payment
+  module.
+- **Stale classes:** the IDE's Java extension also compiles into `target/`. If tests fail with odd
+  reflection errors (e.g. `TypeNotPresentException`) or "Unresolved compilation problem", run
+  `./mvnw clean verify`.
 - **Base package:** it has an underscore (`vsnvi_food`), because the generated project name
   contains a hyphen.
 

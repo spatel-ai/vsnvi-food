@@ -13,7 +13,8 @@ Modules are listed in build order: a module comes after every module it calls or
 - [x] `compose.yaml` for local Postgres, Redis and Mailpit; `.env.example`
 - [ ] Dependencies: Spring Modulith 2.x BOM (`spring-modulith-starter-core`, `-starter-jpa`, `-starter-test`), Redis, WebSocket, jjwt (`jjwt-api`, `jjwt-impl`, a JSON module; see ADR-002), Razorpay SDK (or HTTP client), Testcontainers Redis
   - [x] Spring Modulith 2.1.2 BOM and starters; jjwt 0.13.0 with `jjwt-gson` (ADR-002)
-  - [ ] Redis, WebSocket, Razorpay, Testcontainers Redis
+  - [x] Redis (`spring-boot-starter-data-redis`), WebSocket (`spring-boot-starter-websocket`), Testcontainers Redis (a `GenericContainer` with `@ServiceConnection(name = "redis")`; Testcontainers 2 has no Redis module)
+  - [ ] Razorpay SDK (or HTTP client), with the payment module
 - [ ] `common` kernel
   - [x] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
     - [x] `@DataJpaTest` for audit timestamps from a fixed `Clock` (`UserPersistenceTest`)
@@ -37,7 +38,7 @@ Modules are listed in build order: a module comes after every module it calls or
   - [ ] Profile config: enabled in `local`/`dev`, disabled in `prod`; security allowlist in non-prod
   - [ ] CI: export `target/openapi.json` as a build artifact
 - [ ] Flyway baseline migration
-- [ ] Testcontainers integration test base (Postgres and Redis)
+- [x] Testcontainers integration test base (Postgres and Redis)
 - [x] Spring Modulith
   - [x] `ApplicationModules.verify()` test, `common` as an open module
   - [x] `@NamedInterface("api")` conventions and the check that `api.web` isn't exposed (`ModularityTests`)
