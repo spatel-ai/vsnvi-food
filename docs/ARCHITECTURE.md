@@ -75,6 +75,7 @@ common/
 ├── domain/   BaseEntity, Money, DomainException, ErrorCode, NotFoundException
 ├── web/      GlobalExceptionHandler, ProblemDetailFactory, PageResponse, request filters
 ├── security/ AuthenticatedUser, CurrentUser, TokenAuthenticator SPI, bearer-token filter (ADR-006)
+├── idempotency/ IdempotencyService, IdempotencyRecord (idempotency_keys), @IdempotencyKeyHeader
 └── config/   cross-cutting @Configuration (Clock, JPA auditing, SecurityConfig, STOMP, OpenAPI)
 ```
 

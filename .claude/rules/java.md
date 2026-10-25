@@ -21,7 +21,7 @@ Modules: `auth`, `user`, `restaurant`, `menu`, `cart`, `order`, `payment`, `deli
 ```
 
 - From another module, import only classes directly in its `api` package. Never import its `api.web`, `application`, `domain` or `infrastructure` packages.
-- `common` holds no business logic and depends on no other module. It uses its own layout (`domain/`, `web/`, `security/`, `config/`; see `docs/ARCHITECTURE.md` §2), not the module layout above.
+- `common` holds no business logic and depends on no other module. It uses its own layout (`domain/`, `web/`, `security/`, `idempotency/`, `config/`; see `docs/ARCHITECTURE.md` §2), not the module layout above.
 - Dependency direction: `api.web` → `application` → `domain`. `infrastructure` implements `domain` interfaces. Controllers never call repositories.
 - `domain` must not import Spring Web, `application`, `infrastructure`, or other modules (except `common`).
 - `infrastructure` contains no business rules. Business logic belongs in `application` services or in entity methods.

@@ -23,12 +23,12 @@ Modules are listed in build order: a module comes after every module it calls or
   - [x] Global `@RestControllerAdvice` returning `ProblemDetail`
   - [x] Pagination envelopes: offset `PageResponse`, cursor `CursorPageResponse` (keyset on `(createdAt, id)`)
   - [x] Trace ID filter (MDC, `X-Trace-Id` response header, every log line)
-  - [ ] Idempotency-Key support
+  - [x] Idempotency-Key support (`IdempotencyService`, `idempotency_keys`, hourly cleanup)
   - [x] `Clock` bean (UTC)
-  - [ ] Event Publication Registry: Flyway migration for `event_publication` (copied from the Modulith version's schema), `@EnableAsync`, republish on restart, completion cleanup
+  - [x] Event Publication Registry: Flyway migration for `event_publication` (copied from the Modulith version's schema), `@EnableAsync`, republish on restart, completion cleanup
     - [x] `event_publication` migration (`V1__common_create_event_publication.sql`, from Modulith 2.1.2)
     - [x] `@EnableAsync` (`AsyncConfig`) and republish on restart
-    - [ ] Completion cleanup
+    - [x] Completion cleanup (`spring.modulith.events.completion-mode: delete`)
 - [ ] OpenAPI / Swagger UI (springdoc)
   - [ ] `OpenApiConfig`: info, servers, `bearerAuth` security scheme
   - [ ] One `GroupedOpenApi` per module

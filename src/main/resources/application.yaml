@@ -34,6 +34,8 @@ spring:
     events:
       # Resubmit events whose listeners didn't complete before a crash or shutdown.
       republish-outstanding-events-on-restart: true
+      # Completed publications are deleted; failed ones stay for resubmission and monitoring.
+      completion-mode: delete
 
 server:
   port: ${SERVER_PORT:8080}

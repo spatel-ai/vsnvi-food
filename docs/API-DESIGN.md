@@ -160,6 +160,13 @@ Only documented filter and sort fields are accepted. Anything else returns `400`
   scoped to the caller.
   - The same key with the same body returns the stored response.
   - The same key with a different body returns `409 IDEMPOTENCY_KEY_CONFLICT`.
+- **Format:** the key is a UUID. A missing or malformed key returns `400 VALIDATION_FAILED`.
+- **Concurrency:** a retry that arrives while the first request with the same key is still running
+  returns `409 IDEMPOTENCY_KEY_CONFLICT`. It doesn't run twice.
+- **Failures:** if the request fails, the key is released, so the client can retry with it.
+- **Implementation:** `common`'s `IdempotencyService.execute(key, operation, request, type, action)`,
+  called by the application service. Handlers carry `@IdempotencyKeyHeader`, which documents the
+  header in OpenAPI.
 - **Webhooks:** Razorpay webhooks don't use this header. They are deduplicated by
   `x-razorpay-event-id`, as described in [ARCHITECTURE.md](ARCHITECTURE.md#7-payment-flow-razorpay).
 
