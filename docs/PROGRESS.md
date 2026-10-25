@@ -16,7 +16,7 @@ Modules are listed in build order: a module comes after every module it calls or
   - [ ] Redis, WebSocket, Razorpay, Testcontainers Redis
 - [ ] `common` kernel
   - [x] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
-    - [ ] `@DataJpaTest` for audit timestamps from a fixed `Clock` (with the first entity)
+    - [x] `@DataJpaTest` for audit timestamps from a fixed `Clock` (`UserPersistenceTest`)
   - [x] `Money` value object and JPA mapping
   - [x] `DomainException` hierarchy and `ErrorCode`
   - [x] Global `@RestControllerAdvice` returning `ProblemDetail`
@@ -36,21 +36,21 @@ Modules are listed in build order: a module comes after every module it calls or
   - [ ] CI: export `target/openapi.json` as a build artifact
 - [ ] Flyway baseline migration
 - [ ] Testcontainers integration test base (Postgres and Redis)
-- [ ] Spring Modulith
+- [x] Spring Modulith
   - [x] `ApplicationModules.verify()` test, `common` as an open module
-  - [ ] `@NamedInterface("api")` conventions and the check that `api.web` isn't exposed (with the first module)
+  - [x] `@NamedInterface("api")` conventions and the check that `api.web` isn't exposed (`ModularityTests`)
 - [ ] CI pipeline (`./mvnw verify`)
 
 ## Phase 1 — Users, auth, restaurants, menus
 
 ### user
-- [ ] Migration: users, addresses
-- [ ] Domain: `User`, `Address`, account status
-- [ ] Public facade: `UserApi` (incl. `createUser` for registration, address lookup with coordinates)
-- [ ] Event: `UserBlocked`
-- [ ] API: `/users/me`, `/users/me/addresses`
-- [ ] Admin: `GET /admin/users`, `POST /admin/users/{id}/block`
-- [ ] Tests
+- [x] Migration: users, addresses
+- [x] Domain: `User`, `Address`, account status
+- [x] Public facade: `UserApi` (incl. `createUser` for registration, address lookup with coordinates)
+- [x] Event: `UserBlocked`
+- [x] API: `/users/me`, `/users/me/addresses`
+- [x] Admin: `GET /admin/users`, `POST /admin/users/{id}/block`
+- [x] Tests
 
 ### auth
 - [ ] Migration: credentials, refresh_tokens

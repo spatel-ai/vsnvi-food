@@ -298,7 +298,7 @@ Admin endpoints live in the module that owns the data, e.g. `RestaurantAdminCont
 | GET    | `/api/v1/admin/restaurants`              | A    | List restaurants (`status` filter)  |
 | POST   | `/api/v1/admin/restaurants/{id}/approve` | A    | Approve a restaurant                |
 | POST   | `/api/v1/admin/restaurants/{id}/suspend` | A    | Suspend a restaurant                |
-| GET    | `/api/v1/admin/users`                    | A    | List users                          |
+| GET    | `/api/v1/admin/users`                    | A    | List users (`role`, `status` filters; sort by `createdAt`, `email`, `fullName`) |
 | POST   | `/api/v1/admin/users/{id}/block`         | A    | Block a user                        |
 | GET    | `/api/v1/admin/delivery-partners`        | A    | List partners (`status` filter)     |
 | POST   | `/api/v1/admin/delivery-partners/{id}/approve` | A | Approve a partner              |
