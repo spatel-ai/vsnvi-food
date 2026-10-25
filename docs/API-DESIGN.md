@@ -97,6 +97,7 @@ Any framework error whose status has no code below is returned as `MALFORMED_REQ
 | `INVALID_WEBHOOK_SIGNATURE` | 400  | Razorpay signature check failed            |
 | `UNAUTHORIZED`              | 401  | Missing or invalid token                   |
 | `TOKEN_EXPIRED`             | 401  | Access token expired; refresh it           |
+| `INVALID_CREDENTIALS`       | 401  | Wrong email or password (never says which) |
 | `FORBIDDEN`                 | 403  | Role not allowed                           |
 | `ACCOUNT_BLOCKED`           | 403  | User is blocked by an admin                |
 | `RESOURCE_NOT_FOUND`        | 404  | Not found, or not yours                    |

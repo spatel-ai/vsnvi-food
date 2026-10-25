@@ -10,6 +10,7 @@ public enum ErrorCode {
     INVALID_WEBHOOK_SIGNATURE(400, "Invalid webhook signature"),
     UNAUTHORIZED(401, "Unauthorized"),
     TOKEN_EXPIRED(401, "Token expired"),
+    INVALID_CREDENTIALS(401, "Invalid credentials"),
     FORBIDDEN(403, "Forbidden"),
     ACCOUNT_BLOCKED(403, "Account blocked"),
     RESOURCE_NOT_FOUND(404, "Resource not found"),

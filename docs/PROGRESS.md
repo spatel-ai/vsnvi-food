@@ -27,6 +27,8 @@ Modules are listed in build order: a module comes after every module it calls or
   - [x] `Clock` bean (UTC)
   - [ ] Event Publication Registry: Flyway migration for `event_publication` (copied from the Modulith version's schema), `@EnableAsync`, republish on restart, completion cleanup
     - [x] `event_publication` migration (`V1__common_create_event_publication.sql`, from Modulith 2.1.2)
+    - [x] `@EnableAsync` (`AsyncConfig`) and republish on restart
+    - [ ] Completion cleanup
 - [ ] OpenAPI / Swagger UI (springdoc)
   - [ ] `OpenApiConfig`: info, servers, `bearerAuth` security scheme
   - [ ] One `GroupedOpenApi` per module
@@ -53,16 +55,18 @@ Modules are listed in build order: a module comes after every module it calls or
 - [x] Tests
 
 ### auth
-- [ ] Migration: credentials, refresh_tokens
+- [x] Migration: credentials, refresh_tokens
 - [x] Security filter chain, exact-path public allowlist, `CurrentUser`, ProblemDetail 401/403 (in `common`, ADR-006)
-- [ ] `JwtService` (jjwt) implementing `TokenAuthenticator`
-- [ ] Register, login (rejects blocked users), refresh (rotation and reuse detection), logout
-- [ ] Login rate limiting (per IP and per account)
-- [ ] `AdminBootstrap`: first admin from `ADMIN_BOOTSTRAP_*` env vars
-- [ ] Event: `UserRegistered`
-- [ ] `TokenAuthenticator` implementation for STOMP `CONNECT` (uses `JwtService`)
+- [x] `JwtService` (jjwt) implementing `TokenAuthenticator`
+- [x] Register, login (rejects blocked users), refresh (rotation and reuse detection), logout
+- [ ] Login rate limiting (per IP and per account) — needs Redis (Phase 0 dependency)
+- [x] `AdminBootstrap`: first admin from `ADMIN_BOOTSTRAP_*` env vars
+- [x] Event: `UserRegistered`
+- [x] `TokenAuthenticator` implementation (`JwtService`); the STOMP `CONNECT` interceptor that calls it comes with the tracking work
 - [ ] Listener: `UserBlocked` revokes refresh tokens and calls `StompSessionRegistry.closeSessionsOf`
-- [ ] Tests
+  - [x] Revokes refresh tokens (idempotent)
+  - [ ] `StompSessionRegistry.closeSessionsOf` (with the STOMP work)
+- [x] Tests
 
 ### restaurant
 - [ ] Migration: restaurants, opening_hours
