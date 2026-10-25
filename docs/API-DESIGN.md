@@ -82,6 +82,8 @@ extension fields:
 ```
 
 - Use `Content-Type: application/problem+json`.
+- Every response carries an `X-Trace-Id` header with the same value as `traceId`. A well-formed
+  incoming `X-Trace-Id` (8–64 letters, digits or hyphens) is kept, so a gateway's ID flows through.
 - `type` is `https://api.vsnvi.com/errors/<code-in-kebab-case>`.
 - Never include stack traces, SQL or class names in an error response.
 

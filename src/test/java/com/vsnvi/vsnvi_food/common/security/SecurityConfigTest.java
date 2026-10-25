@@ -4,6 +4,7 @@ import static com.vsnvi.vsnvi_food.common.security.WebSecurityTestConfig.bearer;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,7 +43,9 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
-                .andExpect(jsonPath("$.instance").value("/api/v1/probe/me"));
+                .andExpect(jsonPath("$.instance").value("/api/v1/probe/me"))
+                .andExpect(jsonPath("$.traceId").isNotEmpty())
+                .andExpect(header().exists("X-Trace-Id"));
     }
 
     @Test

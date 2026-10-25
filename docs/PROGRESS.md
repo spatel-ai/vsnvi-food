@@ -21,9 +21,8 @@ Modules are listed in build order: a module comes after every module it calls or
   - [x] `Money` value object and JPA mapping
   - [x] `DomainException` hierarchy and `ErrorCode`
   - [x] Global `@RestControllerAdvice` returning `ProblemDetail`
-  - [ ] Pagination envelopes (offset and cursor)
-    - [x] Offset: `PageResponse`
-  - [ ] Trace ID filter (MDC)
+  - [x] Pagination envelopes: offset `PageResponse`, cursor `CursorPageResponse` (keyset on `(createdAt, id)`)
+  - [x] Trace ID filter (MDC, `X-Trace-Id` response header, every log line)
   - [ ] Idempotency-Key support
   - [x] `Clock` bean (UTC)
   - [ ] Event Publication Registry: Flyway migration for `event_publication` (copied from the Modulith version's schema), `@EnableAsync`, republish on restart, completion cleanup

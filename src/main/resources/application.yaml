@@ -43,6 +43,11 @@ server:
     include-message: never
     include-binding-errors: never
 
+logging:
+  pattern:
+    # Every line carries the request's traceId (TraceIdFilter); never log secrets or personal data.
+    level: "%5p [%X{traceId:-}]"
+
 management:
   endpoints:
     web:

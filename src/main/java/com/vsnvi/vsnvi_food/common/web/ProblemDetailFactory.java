@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProblemDetailFactory {
 
-    static final String TRACE_ID_MDC_KEY = "traceId";
+    public static final String TRACE_ID_MDC_KEY = "traceId";
 
     private final Clock clock;
 
