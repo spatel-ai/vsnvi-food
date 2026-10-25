@@ -19,6 +19,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_REGISTERED(409, "Email already registered"),
     INVALID_ORDER_STATE(409, "Invalid order state"),
     INVALID_RESTAURANT_STATE(409, "Invalid restaurant state"),
+    CATEGORY_NOT_EMPTY(409, "Category not empty"),
     CONCURRENT_MODIFICATION(409, "Concurrent modification"),
     IDEMPOTENCY_KEY_CONFLICT(409, "Idempotency key conflict"),
     PAYLOAD_TOO_LARGE(413, "Payload too large"),

@@ -498,7 +498,7 @@ discount amount: `promotion` calculates it (`evaluate` for the preview, `redeem`
 
 | Line                | Source                                                                  |
 |---------------------|-------------------------------------------------------------------------|
-| Item subtotal       | Item, variant and add-on prices from `MenuApi`                          |
+| Item subtotal       | Item, variant and add-on prices from `MenuApi`: unit price = the chosen variant's price (it **replaces** the base price; an item with variants needs one) + the add-on prices, × quantity |
 | Packaging charge    | Flat per-order amount set by the restaurant (`RestaurantApi`)           |
 | Delivery fee        | Flat per-order amount set by the restaurant (`RestaurantApi`)           |
 | Discount            | From at most **one** coupon, evaluated by `PromotionApi`                |

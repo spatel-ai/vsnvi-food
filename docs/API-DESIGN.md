@@ -106,6 +106,7 @@ Any framework error whose status has no code below is returned as `MALFORMED_REQ
 | `EMAIL_ALREADY_REGISTERED`  | 409  | Duplicate registration                     |
 | `INVALID_ORDER_STATE`       | 409  | Illegal order status transition            |
 | `INVALID_RESTAURANT_STATE`  | 409  | Illegal approve/suspend transition         |
+| `CATEGORY_NOT_EMPTY`        | 409  | Delete or move a category's items first    |
 | `CONCURRENT_MODIFICATION`   | 409  | Optimistic lock failure; retry             |
 | `IDEMPOTENCY_KEY_CONFLICT`  | 409  | Same key, different payload                |
 | `PAYLOAD_TOO_LARGE`         | 413  | Request body or upload too large           |

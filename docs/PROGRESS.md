@@ -77,11 +77,11 @@ Modules are listed in build order: a module comes after every module it calls or
 - [x] Tests
 
 ### menu
-- [ ] Migration: menu_categories, menu_items, item_variants, item_add_ons
-- [ ] Domain: `MenuItem`, `Variant`, `AddOn`, availability
-- [ ] Public facade: `MenuApi` (pricing lookup for cart and order)
-- [ ] API: `/restaurants/{id}/menu`, `/menu-items`, `/menu-categories`
-- [ ] Tests
+- [x] Migration: menu_categories, menu_items, item_variants, item_add_ons
+- [x] Domain: `MenuItem`, `Variant`, `AddOn`, availability
+- [x] Public facade: `MenuApi` (pricing lookup for cart and order)
+- [x] API: `/restaurants/{id}/menu`, `/menu-items`, `/menu-categories`
+- [x] Tests
 
 ## Phase 2 — Promotions, cart, payments, orders
 
