@@ -69,12 +69,12 @@ Modules are listed in build order: a module comes after every module it calls or
 - [x] Tests
 
 ### restaurant
-- [ ] Migration: restaurants, opening_hours
-- [ ] Domain: `Restaurant`, `OpeningHours`, serviceable radius, approval status, `deliveryFee`, `packagingCharge`
-- [ ] Public facade: `RestaurantApi`
-- [ ] API: `/restaurants` (search by location, cuisine and rating), open/close
-- [ ] Admin: list, approve and suspend restaurants (`/admin/restaurants`)
-- [ ] Tests
+- [x] Migration: restaurants, opening_hours
+- [x] Domain: `Restaurant`, `OpeningHours`, serviceable radius, approval status, `deliveryFee`, `packagingCharge`
+- [x] Public facade: `RestaurantApi`
+- [x] API: `/restaurants` (search by location, cuisine and rating), open/close
+- [x] Admin: list, approve and suspend restaurants (`/admin/restaurants`)
+- [x] Tests
 
 ### menu
 - [ ] Migration: menu_categories, menu_items, item_variants, item_add_ons

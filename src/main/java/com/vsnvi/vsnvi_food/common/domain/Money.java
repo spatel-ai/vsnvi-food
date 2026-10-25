@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Currency;
 import java.util.Objects;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * An exact amount with its ISO 4217 currency, always at scale 2 and rounded half-up. Stored as {@code NUMERIC(12,2)}
@@ -24,7 +26,9 @@ public record Money(
         @Schema(type = "string", pattern = "^-?\\d+\\.\\d{2}$", example = "249.00")
         BigDecimal amount,
 
-        @Column(nullable = false, length = 3) @Schema(example = "INR")
+        @Column(nullable = false, length = 3)
+        @JdbcTypeCode(SqlTypes.CHAR) // CHAR(3), per persistence rules
+        @Schema(example = "INR")
         String currency) {
 
     public static final String INR = "INR";

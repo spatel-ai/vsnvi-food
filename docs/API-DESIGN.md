@@ -105,6 +105,7 @@ Any framework error whose status has no code below is returned as `MALFORMED_REQ
 | `NOT_ACCEPTABLE`            | 406  | No acceptable response media type          |
 | `EMAIL_ALREADY_REGISTERED`  | 409  | Duplicate registration                     |
 | `INVALID_ORDER_STATE`       | 409  | Illegal order status transition            |
+| `INVALID_RESTAURANT_STATE`  | 409  | Illegal approve/suspend transition         |
 | `CONCURRENT_MODIFICATION`   | 409  | Optimistic lock failure; retry             |
 | `IDEMPOTENCY_KEY_CONFLICT`  | 409  | Same key, different payload                |
 | `PAYLOAD_TOO_LARGE`         | 413  | Request body or upload too large           |
@@ -202,12 +203,12 @@ Roles: **C** = CUSTOMER, **O** = RESTAURANT_OWNER, **R** = RIDER, **A** = ADMIN,
 
 | Method | Path                                     | Role   | Description                                       |
 |--------|------------------------------------------|--------|---------------------------------------------------|
-| GET    | `/api/v1/restaurants`                    | Public | Search by `lat`, `lng`, `cuisine`, `minRating`, `isOpen` and `q` (paginated) |
-| GET    | `/api/v1/restaurants/{id}`               | Public | Restaurant details                                |
+| GET    | `/api/v1/restaurants`                    | Public | Search by `lat`, `lng`, `cuisine`, `minRating`, `isOpen` and `q` (paginated; sort `distance`, `rating`, `name`). With `lat`/`lng`, only restaurants whose serviceable radius covers the point |
+| GET    | `/api/v1/restaurants/{id}`               | Public | Restaurant details (404 unless approved, except for its owner and admins) |
 | POST   | `/api/v1/restaurants`                    | O      | Create a restaurant (starts pending approval)     |
 | PATCH  | `/api/v1/restaurants/{id}`               | O      | Update your own restaurant, including `deliveryFee` and `packagingCharge` |
 | PUT    | `/api/v1/restaurants/{id}/opening-hours` | O      | Set opening hours                                 |
-| POST   | `/api/v1/restaurants/{id}/toggle-open`   | O      | Temporarily open or close                         |
+| POST   | `/api/v1/restaurants/{id}/toggle-open`   | O      | Temporarily open or close (`{"open": bool}`, so repeats are safe) |
 | GET    | `/api/v1/restaurants/me`                 | O      | List your own restaurants                         |
 
 ### menu
