@@ -52,7 +52,7 @@ Solid lines are FKs within a module. Dotted lines are cross-module ID references
 erDiagram
     USER ||--o{ ADDRESS : has
     USER ||..|| CREDENTIAL : "id ref (auth)"
-    CREDENTIAL ||--o{ REFRESH_TOKEN : issues
+    USER ||..o{ REFRESH_TOKEN : "user_id ref (auth)"
 
     USER ||..o{ RESTAURANT : "owner_id ref"
     RESTAURANT ||--o{ OPENING_HOURS : has

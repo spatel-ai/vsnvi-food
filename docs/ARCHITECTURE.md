@@ -76,6 +76,7 @@ common/
 ├── web/      GlobalExceptionHandler, ProblemDetailFactory, PageResponse, request filters
 ├── security/ AuthenticatedUser, CurrentUser, TokenAuthenticator SPI, bearer-token filter (ADR-006)
 ├── idempotency/ IdempotencyService, IdempotencyRecord (idempotency_keys), @IdempotencyKeyHeader
+├── ratelimit/ RateLimiter (Redis fixed-window counters, fails open), RateLimitedException
 └── config/   cross-cutting @Configuration (Clock, JPA auditing, SecurityConfig, STOMP, OpenAPI)
 ```
 
