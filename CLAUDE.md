@@ -39,15 +39,38 @@ you work on matching files.
 - **Build and run all tests:** `./mvnw verify`.
 - **Tests only:** `./mvnw test`.
 - **One test:** `./mvnw test -Dtest=ClassName` or `./mvnw test -Dtest=ClassName#methodName`.
+- **Run locally (persistent data):**
+  1. `docker compose up -d` starts Postgres 18, Redis 8.2 and Mailpit from `compose.yaml`.
+  2. `./mvnw spring-boot:run` (or Run in the IDE). `local` is the default profile, and its
+     defaults match the Compose containers, so no setup is needed. To override values, use a
+     git-ignored `.env` (template: `.env.example`) or environment variables.
+  - App: `http://localhost:8080`. Health: `/actuator/health`. Swagger UI: `/swagger-ui.html`.
+    Mailpit inbox: `http://localhost:8025`.
+  - `docker compose down` stops the stack; `docker compose down -v` also wipes the data.
 - **Run locally against a throwaway Postgres container:** `./mvnw spring-boot:test-run`, which
-  starts `TestVsnviFoodApplication` with `TestcontainersConfiguration`.
+  starts `TestVsnviFoodApplication` with `TestcontainersConfiguration` (no `.env` needed).
 - **Compile only:** `./mvnw -DskipTests compile`.
 - **Format:** `./mvnw spotless:apply` (palantir-java-format, unused imports removed);
   `./mvnw spotless:check` to check only. A PostToolUse hook (`.claude/hooks/format-java.sh`)
   formats each Java file Claude writes or edits, so don't hand-format.
 
-Tests and the local run need a running Docker daemon (Testcontainers). There is no linter
-configured yet.
+Tests and the local run need a running Docker daemon (Testcontainers or Compose). There is no
+linter configured yet.
+
+## Configuration
+
+- One `src/main/resources/application.yaml` with profile documents: `local` (the default when
+  none is active; tests run with it too, but Testcontainers replaces the database connection),
+  `dev`, `test` (API docs on, Swagger UI off) and `prod` (everything from the environment, API
+  docs off). Deployments must set `SPRING_PROFILES_ACTIVE`.
+- Secrets are `${ENV_VAR}` placeholders. Only `local` gives them throwaway defaults that match
+  `compose.yaml`. The list is in `docs/SECURITY.md` §4. Non-secret tunables (`auth.jwt.*` TTLs,
+  `pricing.tax-percent`, `delivery.assignment.*`) have defaults in the yaml.
+- When you add a technology that needs a connection (a new datastore, broker or mail provider),
+  add its container to `compose.yaml`, its properties with working defaults to the `local` document and without defaults to
+  the `dev, prod` document,
+  its variables to `.env.example` and `docs/SECURITY.md` §4, and update this section.
+- Razorpay has no container. Tests use `FakePaymentGateway`; a local run uses test-mode keys.
 
 ## Architecture in brief
 
@@ -80,9 +103,10 @@ configured yet.
 
 ## Repo notes
 
-- **Planned dependencies:** `pom.xml` doesn't yet include Spring Modulith, Redis, WebSocket, the
-  JWT library (jjwt, see ADR-002; not Spring's OAuth2 resource server) or Razorpay. Adding them
-  is a Phase 0 item in `docs/PROGRESS.md`. springdoc is already in `pom.xml`.
+- **Dependencies:** `pom.xml` has Spring Modulith 2.1.2, jjwt 0.13.0 with `jjwt-gson`
+  (ADR-002; not Spring's OAuth2 resource server) and springdoc. Redis, WebSocket and Razorpay are
+  still to be added (Phase 0 in `docs/PROGRESS.md`). The `spring.data.redis.*` properties and the
+  Compose Redis service are already in place, but nothing uses them until the Redis starter is added.
 - **Base package:** it has an underscore (`vsnvi_food`), because the generated project name
   contains a hyphen.
 

@@ -9,18 +9,23 @@ Modules are listed in build order: a module comes after every module it calls or
 ## Phase 0 — Foundation
 
 - [ ] Project docs and Claude rules (architecture, API design, database design, security, ADR-001 to ADR-005)
-- [ ] `application.yaml` profiles (`local`, `test`, `prod`) with Postgres and Redis config from env
+- [x] `application.yaml` profiles (`local`, `test`, `prod`) with Postgres and Redis config from env
+- [x] `compose.yaml` for local Postgres, Redis and Mailpit; `.env.example`
 - [ ] Dependencies: Spring Modulith 2.x BOM (`spring-modulith-starter-core`, `-starter-jpa`, `-starter-test`), Redis, WebSocket, jjwt (`jjwt-api`, `jjwt-impl`, a JSON module; see ADR-002), Razorpay SDK (or HTTP client), Testcontainers Redis
+  - [x] Spring Modulith 2.1.2 BOM and starters; jjwt 0.13.0 with `jjwt-gson` (ADR-002)
+  - [ ] Redis, WebSocket, Razorpay, Testcontainers Redis
 - [ ] `common` kernel
-  - [ ] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
+  - [x] `BaseEntity` (UUID id, `createdAt`, `updatedAt`; no `version`, see `.claude/rules/java.md`)
+    - [ ] `@DataJpaTest` for audit timestamps from a fixed `Clock` (with the first entity)
   - [ ] `Money` value object and JPA mapping
-  - [ ] `DomainException` hierarchy and `ErrorCode`
-  - [ ] Global `@RestControllerAdvice` returning `ProblemDetail`
+  - [x] `DomainException` hierarchy and `ErrorCode`
+  - [x] Global `@RestControllerAdvice` returning `ProblemDetail`
   - [ ] Pagination envelopes (offset and cursor)
   - [ ] Trace ID filter (MDC)
   - [ ] Idempotency-Key support
-  - [ ] `Clock` bean (UTC)
+  - [x] `Clock` bean (UTC)
   - [ ] Event Publication Registry: Flyway migration for `event_publication` (copied from the Modulith version's schema), `@EnableAsync`, republish on restart, completion cleanup
+    - [x] `event_publication` migration (`V1__common_create_event_publication.sql`, from Modulith 2.1.2)
 - [ ] OpenAPI / Swagger UI (springdoc)
   - [ ] `OpenApiConfig`: info, servers, `bearerAuth` security scheme
   - [ ] One `GroupedOpenApi` per module
@@ -30,7 +35,9 @@ Modules are listed in build order: a module comes after every module it calls or
   - [ ] CI: export `target/openapi.json` as a build artifact
 - [ ] Flyway baseline migration
 - [ ] Testcontainers integration test base (Postgres and Redis)
-- [ ] Spring Modulith: `ApplicationModules.verify()` test, `@NamedInterface` conventions, `common` as an open module
+- [ ] Spring Modulith
+  - [x] `ApplicationModules.verify()` test, `common` as an open module
+  - [ ] `@NamedInterface("api")` conventions and the check that `api.web` isn't exposed (with the first module)
 - [ ] CI pipeline (`./mvnw verify`)
 
 ## Phase 1 — Users, auth, restaurants, menus
@@ -117,7 +124,7 @@ Modules are listed in build order: a module comes after every module it calls or
 ### delivery
 - [ ] Migration: delivery_partners, delivery_tasks, delivery_location_history
 - [ ] Domain: `DeliveryTask` lifecycle, partner availability, partner approval status
-- [ ] Listener: `UserRegistered` (partner role) creates a `PENDING_APPROVAL` profile
+- [ ] Listener: `UserRegistered` (role `RIDER`) creates a `PENDING_APPROVAL` profile
 - [ ] Admin: list, approve and suspend partners (`/admin/delivery-partners`)
 - [ ] Redis GEO: partner availability index, latest-location hash, sweeper for expired heartbeats
 - [ ] Assignment: `GEOSEARCH` nearest partner, offer timeout, fallback, offer lock

@@ -45,7 +45,11 @@
 | `401` | The token is missing, invalid or expired                                                 |
 | `403` | The caller is authenticated but their **role** doesn't allow the action                  |
 | `404` | The resource doesn't exist, **or it belongs to someone else** (ownership failures are hidden as 404) |
+| `405` | The HTTP method isn't supported on this path                                             |
+| `406` | The `Accept` header allows no media type we can produce                                  |
 | `409` | Invalid state transition, duplicate, optimistic-lock failure, or an idempotency key reused with a different body |
+| `413` | The request body or upload is too large                                                  |
+| `415` | The request `Content-Type` isn't supported                                               |
 | `422` | A business rule is violated (restaurant closed, item unavailable, outside the delivery area) |
 | `429` | Rate limited                                                                             |
 | `500` | Unexpected server error                                                                  |
@@ -83,6 +87,9 @@ extension fields:
 
 ### Error code catalog (initial)
 
+Any framework error whose status has no code below is returned as `MALFORMED_REQUEST` (400) or
+`INTERNAL_ERROR` (500), so `status`, `code` and `type` always agree.
+
 | Code                        | HTTP | Meaning                                    |
 |-----------------------------|------|--------------------------------------------|
 | `VALIDATION_FAILED`         | 400  | Bean validation errors                     |
@@ -91,12 +98,16 @@ extension fields:
 | `UNAUTHORIZED`              | 401  | Missing or invalid token                   |
 | `TOKEN_EXPIRED`             | 401  | Access token expired; refresh it           |
 | `FORBIDDEN`                 | 403  | Role not allowed                           |
-| `RESOURCE_NOT_FOUND`        | 404  | Not found, or not yours                    |
 | `ACCOUNT_BLOCKED`           | 403  | User is blocked by an admin                |
+| `RESOURCE_NOT_FOUND`        | 404  | Not found, or not yours                    |
+| `METHOD_NOT_ALLOWED`        | 405  | HTTP method not supported on this path     |
+| `NOT_ACCEPTABLE`            | 406  | No acceptable response media type          |
 | `EMAIL_ALREADY_REGISTERED`  | 409  | Duplicate registration                     |
 | `INVALID_ORDER_STATE`       | 409  | Illegal order status transition            |
 | `CONCURRENT_MODIFICATION`   | 409  | Optimistic lock failure; retry             |
 | `IDEMPOTENCY_KEY_CONFLICT`  | 409  | Same key, different payload                |
+| `PAYLOAD_TOO_LARGE`         | 413  | Request body or upload too large           |
+| `UNSUPPORTED_MEDIA_TYPE`    | 415  | Request `Content-Type` not supported       |
 | `CART_RESTAURANT_MISMATCH`  | 422  | Item from a different restaurant           |
 | `COUPON_INVALID`            | 422  | Unknown, inactive or expired coupon        |
 | `COUPON_NOT_APPLICABLE`     | 422  | Minimum subtotal, restaurant or first-order rule not met |
@@ -163,14 +174,14 @@ Only documented filter and sort fields are accepted. Anything else returns `400`
 
 ## 9. Initial endpoint list
 
-Roles: **C** = CUSTOMER, **O** = RESTAURANT_OWNER, **D** = DELIVERY_PARTNER, **A** = ADMIN,
+Roles: **C** = CUSTOMER, **O** = RESTAURANT_OWNER, **R** = RIDER, **A** = ADMIN,
 **Public** = no authentication.
 
 ### auth
 
 | Method | Path                     | Role   | Description                                 |
 |--------|--------------------------|--------|---------------------------------------------|
-| POST   | `/api/v1/auth/register`  | Public | Register a customer, owner or partner       |
+| POST   | `/api/v1/auth/register`  | Public | Register a `CUSTOMER`, `RESTAURANT_OWNER` or `RIDER` |
 | POST   | `/api/v1/auth/login`     | Public | Get access and refresh tokens               |
 | POST   | `/api/v1/auth/refresh`   | Public | Rotate tokens                               |
 | POST   | `/api/v1/auth/logout`    | Any    | Revoke the refresh token                    |
@@ -244,7 +255,7 @@ fee, coupon discount, tax and total.
 | Method | Path                              | Role    | Description                                    |
 |--------|-----------------------------------|---------|------------------------------------------------|
 | POST   | `/api/v1/orders`                  | C       | Check out the cart (`Idempotency-Key`). Returns the order and Razorpay details. If the Razorpay order couldn't be created, `payment.razorpayOrderId` is absent and the client calls `/payments/{id}/retry` |
-| GET    | `/api/v1/orders/{id}`             | C/O/D/A | Order details (ownership enforced)             |
+| GET    | `/api/v1/orders/{id}`             | C/O/R/A | Order details (ownership enforced)             |
 | GET    | `/api/v1/users/me/orders`         | C       | Order history (cursor pagination)              |
 | POST   | `/api/v1/orders/{id}/cancel`      | C/A     | Cancel. Customers only while `PLACED`; admins from any non-terminal state |
 | GET    | `/api/v1/restaurants/{id}/orders` | O       | Incoming or active orders (`status` filter)    |
@@ -267,14 +278,14 @@ fee, coupon discount, tax and total.
 
 | Method | Path                                  | Role | Description                                |
 |--------|---------------------------------------|------|--------------------------------------------|
-| POST   | `/api/v1/delivery/availability`       | D    | Go online or offline (`422 PARTNER_NOT_APPROVED` until approved) |
-| POST   | `/api/v1/delivery/location`           | D    | Location ping (`lat`, `lng`, `heading`, `speed`) |
-| GET    | `/api/v1/delivery-tasks/offers`       | D    | Pending task offers                        |
-| POST   | `/api/v1/delivery-tasks/{id}/accept`  | D    | Accept an offer                            |
-| POST   | `/api/v1/delivery-tasks/{id}/decline` | D    | Decline an offer                           |
-| POST   | `/api/v1/delivery-tasks/{id}/pickup`  | D    | Confirm pickup. Calls `OrderApi.markPickedUp`, and `order` publishes `OrderPickedUp` |
-| POST   | `/api/v1/delivery-tasks/{id}/deliver` | D    | Confirm delivery with OTP. Calls `OrderApi.markDelivered`, and `order` publishes `OrderDelivered` |
-| GET    | `/api/v1/delivery-tasks/me`           | D    | Active and past tasks (cursor pagination)  |
+| POST   | `/api/v1/delivery/availability`       | R    | Go online or offline (`422 PARTNER_NOT_APPROVED` until approved) |
+| POST   | `/api/v1/delivery/location`           | R    | Location ping (`lat`, `lng`, `heading`, `speed`) |
+| GET    | `/api/v1/delivery-tasks/offers`       | R    | Pending task offers                        |
+| POST   | `/api/v1/delivery-tasks/{id}/accept`  | R    | Accept an offer                            |
+| POST   | `/api/v1/delivery-tasks/{id}/decline` | R    | Decline an offer                           |
+| POST   | `/api/v1/delivery-tasks/{id}/pickup`  | R    | Confirm pickup. Calls `OrderApi.markPickedUp`, and `order` publishes `OrderPickedUp` |
+| POST   | `/api/v1/delivery-tasks/{id}/deliver` | R    | Confirm delivery with OTP. Calls `OrderApi.markDelivered`, and `order` publishes `OrderDelivered` |
+| GET    | `/api/v1/delivery-tasks/me`           | R    | Active and past tasks (cursor pagination)  |
 | GET    | `/api/v1/orders/{id}/tracking`        | C    | Tracking snapshot: status, latest location, ETA and the delivery OTP. Owned by `delivery`. Before `READY_FOR_PICKUP` it returns only the order status (read through `OrderApi`) |
 
 ### admin
@@ -313,9 +324,9 @@ The client connects to `/ws` and sends `Authorization: Bearer <accessToken>` in 
 |--------------------------------------------|------------------|------|------------------------------------------------|
 | `/topic/orders/{orderId}/tracking`         | server → client  | C    | Published by `delivery` from `READY_FOR_PICKUP` onwards: `status` (READY_FOR_PICKUP, PARTNER_ASSIGNED, PICKED_UP, DELIVERED, CANCELLED), `location` {lat, lng, heading}, `eta` {etaMinutes}. Earlier statuses: poll `GET /orders/{id}` |
 | `/topic/restaurants/{restaurantId}/orders` | server → client  | O    | New and updated orders for the dashboard       |
-| `/user/queue/offers`                       | server → client  | D    | Delivery task offers                           |
+| `/user/queue/offers`                       | server → client  | R    | Delivery task offers                           |
 | `/user/queue/notifications`                | server → client  | Any  | In-app notifications from `notification` (e.g. refund issued); not order-status tracking |
-| `/app/delivery/location`                   | client → server  | D    | Optional alternative to the REST location ping |
+| `/app/delivery/location`                   | client → server  | R    | Optional alternative to the REST location ping |
 
 Every message is a JSON envelope: `{ "type": "status|location|eta|offer|…", "occurredAt": "…", "data": { … } }`.
 

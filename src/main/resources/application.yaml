@@ -1,3 +1,198 @@
+# Shared configuration (docs/SECURITY.md §4). Only the `local` profile has defaults for
+# credentials, and they are throwaway values that match compose.yaml. Every other profile takes
+# secrets from the environment with no default. Profiles:
+#   local   DEFAULT when no profile is active: connects to the compose.yaml containers out of the
+#           box; a git-ignored .env or real env vars override any value. Tests also run with it,
+#           but Testcontainers' @ServiceConnection replaces the database connection.
+#   dev     a shared dev server: everything from the environment, Swagger on
+#   test    contract tests: API docs on, Swagger UI off
+#   prod    everything from the environment, no defaults, API docs off
+
 spring:
   application:
     name: vsnvi-food
+  profiles:
+    # Used only when SPRING_PROFILES_ACTIVE is unset. Deployments must set dev or prod explicitly.
+    default: local
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  modulith:
+    events:
+      # Resubmit events whose listeners didn't complete before a crash or shutdown.
+      republish-outstanding-events-on-restart: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    version: "@project.version@"
+
+# Swagger UI and /v3/api-docs are off unless a profile turns them on (docs/API-DESIGN.md §11).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Tunables from docs/ARCHITECTURE.md. Not secrets, so defaults are fine.
+auth:
+  jwt:
+    issuer: ${JWT_ISSUER:vsnvi-food}
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+
+pricing:
+  tax-percent: 5
+
+delivery:
+  assignment:
+    max-radius-km: 10
+    alert-after: 15m
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+    # Optional overrides from the git-ignored .env (shared with compose.yaml). Real environment
+    # variables win over both .env and the defaults below.
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:vsnvi_food}
+    username: ${DB_USERNAME:vsnvi}
+    password: ${DB_PASSWORD:vsnvi_local_only}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:vsnvi_local_only}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+
+auth:
+  jwt:
+    # LOCAL ONLY: tokens signed with this key are worthless anywhere else. Never reuse it.
+    signing-key: ${JWT_SIGNING_KEY:XlVQOwLK9097/w0C484DR3kYNn0ofsHfk0v+o7bdXKg=}
+  admin-bootstrap:
+    # Both empty: AdminBootstrap does nothing.
+    email: ${ADMIN_BOOTSTRAP_EMAIL:}
+    password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+
+payment:
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.vsnvi.vsnvi_food: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev, prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: ${REDIS_SSL:true}
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+auth:
+  jwt:
+    signing-key: ${JWT_SIGNING_KEY}
+  admin-bootstrap:
+    email: ${ADMIN_BOOTSTRAP_EMAIL:}
+    password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+
+payment:
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID}
+    key-secret: ${RAZORPAY_KEY_SECRET}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false

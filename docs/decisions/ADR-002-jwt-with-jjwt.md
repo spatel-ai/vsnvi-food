@@ -39,6 +39,10 @@ Jackson 2. When adding the dependency, check whether the jjwt version in use sup
 If it doesn't, use `jjwt-gson` (or jjwt's Jackson 2 module, accepting Jackson 2 on the classpath)
 and record the choice here.
 
+**Chosen (2026-10-25):** jjwt 0.13.0 ships only a Jackson 2 module (`jjwt-jackson` depends on
+`com.fasterxml.jackson.core:jackson-databind`), so we use **`jjwt-gson`** at runtime scope. This
+keeps Jackson 2 off the classpath. Revisit if jjwt adds a Jackson 3 module.
+
 ## Alternatives considered
 
 ### OAuth2 resource server

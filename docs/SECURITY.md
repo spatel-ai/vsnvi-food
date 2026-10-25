@@ -57,7 +57,7 @@ sequenceDiagram
 |--------------------|------------------------------------------------------------------------|
 | `CUSTOMER`         | Browse, manage their own cart, addresses and orders, pay, track their own orders |
 | `RESTAURANT_OWNER` | Manage their **own** restaurants, menus, coupons, and their restaurants' orders |
-| `DELIVERY_PARTNER` | Set availability, ping location, act on tasks **assigned to them**     |
+| `RIDER`            | Set availability, ping location, act on tasks **assigned to them**     |
 | `ADMIN`            | Manage platform coupons, approve or suspend restaurants and delivery partners, block users, search orders, cancel any non-terminal order, issue manual refunds |
 
 - **Default deny:** every endpoint requires authentication unless it is on the public allowlist.
@@ -123,8 +123,16 @@ sequenceDiagram
   or similar) in deployed environments. They are referenced in `application.yaml` as
   `${RAZORPAY_KEY_SECRET}` and similar.
 - **Never in git:**
-  - `application*.yaml` contains no secret values, only placeholders.
-  - `.env` and `application-local.yaml` are git-ignored.
+  - `application*.yaml` contains no secret values, only placeholders. **Exception:** the `local`
+    profile (the default when no profile is active) has throwaway defaults that match
+    `compose.yaml`, so a fresh clone runs with no setup. They're useless outside a developer's
+    machine. `dev` and `prod` have no defaults for secrets, and deployments must set
+    `SPRING_PROFILES_ACTIVE` explicitly.
+  - `.env` and `application-local.yaml` are git-ignored. `.env.example` is committed with
+    local-only values and no real credentials.
+  - The `local` profile optionally imports `.env` (`optional:file:.env[.properties]`), which
+    `compose.yaml` also reads, to override those defaults. `dev` and `prod` take every secret from the real environment, with
+    no defaults.
 - **Inventory:**
   - `JWT_SIGNING_KEY`
   - `DB_PASSWORD`
@@ -155,7 +163,7 @@ sequenceDiagram
   - `/user/queue/**`: the principal's own queue only.
 - **Who authorizes subscriptions:** the destination's owning module, through the
   `SubscriptionAuthorizer` SPI in `common` (see [ARCHITECTURE.md](ARCHITECTURE.md#6-real-time-tracking-redis-geo--websocket-stomp)).
-- **SEND:** to `/app/delivery/location`, only allowed for `DELIVERY_PARTNER`, and rate-limited.
+- **SEND:** to `/app/delivery/location`, only allowed for `RIDER`, and rate-limited.
 - **Delivery OTP:** generated with `SecureRandom`, shown only to the order's customer (never to the
   partner), compared in constant time, limited to 5 attempts per task, cleared when the task
   ends, and never logged. It isn't hashed, because the customer must be able to see it (see

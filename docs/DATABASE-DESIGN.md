@@ -40,6 +40,10 @@ schema of the Modulith version in use, because Hibernate never creates tables.
 | `notification` | `NotificationLog` (notification_log)                                             |
 | `common`       | `IdempotencyRecord` (idempotency_keys); Spring Modulith's `event_publication` table (created by our own Flyway migration, because `ddl-auto=validate`) |
 
+The user role `RIDER` maps to the `delivery` module's `DeliveryPartner` profile
+(`delivery_partners`). The different names are intentional: the role names who the user is, the
+entity names the delivery-side profile.
+
 ## 4. Relationships
 
 Solid lines are FKs within a module. Dotted lines are cross-module ID references, with no FK.
@@ -82,7 +86,7 @@ erDiagram
 
 Key cardinalities:
 
-- **Users:** a user has one role. A `DELIVERY_PARTNER` user has exactly one `DeliveryPartner` profile.
+- **Users:** a user has one role. A `RIDER` user has exactly one `DeliveryPartner` profile.
 - **Carts:** a customer has at most one **active** cart, and every item in it comes from one restaurant.
 - **Order items:** an order has many order items. Each one is a **snapshot** of name, price,
   variant and add-ons, and doesn't depend on the current menu rows.

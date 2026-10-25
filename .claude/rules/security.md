@@ -2,7 +2,7 @@
 
 Details: `docs/SECURITY.md`.
 
-- Never commit secrets. In `application*.yaml`, use `${ENV_VAR}` placeholders only.
+- Never commit secrets. In `application*.yaml`, use `${ENV_VAR}` placeholders only. One exception: the `local` profile may give throwaway defaults that match `compose.yaml` (e.g. `${DB_PASSWORD:vsnvi_local_only}`, a local-only JWT key). `dev`, `prod` and every other profile have no default for any secret.
 - Never log passwords, tokens, signatures, secrets, full addresses or phone numbers.
 - Authenticate every endpoint by default. Add to the public allowlist only what `docs/SECURITY.md` §2 lists.
 - Check roles with `@PreAuthorize`. Check ownership in `application` services, against the authenticated user ID and never against a request field.

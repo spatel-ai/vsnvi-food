@@ -46,7 +46,7 @@ Related docs:
 | `notification` | Email (later push/SMS) and WebSocket pushes; reacts to events only          | `NotificationLog`                                         |
 | `common`       | Shared kernel: `Money`, `BaseEntity`, error model, pagination, idempotency, current-user access, STOMP configuration and its SPIs. **No business logic.** Open module. | `IdempotencyRecord` |
 
-Roles are `CUSTOMER`, `RESTAURANT_OWNER`, `DELIVERY_PARTNER` and `ADMIN`.
+Roles are `CUSTOMER`, `RESTAURANT_OWNER`, `RIDER` and `ADMIN`.
 [SECURITY.md](SECURITY.md) covers them in detail.
 
 ### Package layout per module
@@ -65,6 +65,17 @@ Roles are `CUSTOMER`, `RESTAURANT_OWNER`, `DELIVERY_PARTNER` and `ADMIN`.
 **Public surface of a module.** Other modules may use only the classes directly in `api/`: the
 `<Module>Api` facade, its DTO records and the module's event records. Everything else is internal,
 including `api/web/`.
+
+**`common` layout.** `common` is a shared kernel with no facade, no endpoints and no business logic,
+so it uses its own sub-packages instead of the module layout above. Every module may use all of
+them.
+
+```
+common/
+├── domain/   BaseEntity, Money, DomainException, ErrorCode, NotFoundException
+├── web/      GlobalExceptionHandler (ProblemDetail), pagination envelopes, request filters
+└── config/   cross-cutting @Configuration (Clock, JPA auditing, STOMP, OpenAPI)
+```
 
 ### Boundary enforcement (Spring Modulith)
 
@@ -136,7 +147,7 @@ What each key dependency is used for:
 | `order → promotion`   | `redeem` at checkout; `release` on reject/cancel/timeout           | —                                                    |
 | `promotion → restaurant` | ownership check for restaurant coupons                          | —                                                    |
 | `order → payment`     | `createPayment` inside the checkout transaction, then `openGatewayOrder` after commit; on reject/cancel/timeout `cancelPayment` (refunds if captured, voids otherwise); `markCollected` (COD) | `PaymentSucceeded`, `PaymentFailed`, `RefundIssued` |
-| `delivery → auth`     | —                                                                 | `UserRegistered` (role `DELIVERY_PARTNER`: create a `PENDING_APPROVAL` partner profile) |
+| `delivery → auth`     | —                                                                 | `UserRegistered` (role `RIDER`: create a `PENDING_APPROVAL` partner profile) |
 | `delivery → order`    | `markPartnerAssigned`, `markPickedUp`, `markDelivered`; ownership and location reads | `OrderReadyForPickup` (start assignment), `OrderCancelled` (cancel task) |
 | `notification → *`    | contact details (`UserApi`), order and restaurant summaries        | all customer-facing events                           |
 
