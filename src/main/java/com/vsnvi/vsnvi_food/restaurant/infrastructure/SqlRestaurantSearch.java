@@ -73,6 +73,8 @@ class SqlRestaurantSearch implements RestaurantSearch {
             params.put("isOpen", criteria.isOpen());
         }
 
+        // Before the count, so an invalid sort is rejected even when nothing matches.
+        var orderBy = orderBy(pageable.getSort(), criteria);
         long total = jdbc.sql("SELECT count(*)" + where)
                 .params(params)
                 .query(Long.class)
@@ -83,7 +85,7 @@ class SqlRestaurantSearch implements RestaurantSearch {
 
         var select = "SELECT r.id, " + OPEN_NOW + " AS open_now, "
                 + (criteria.hasLocation() ? DISTANCE : "CAST(NULL AS double precision)") + " AS distance_km";
-        var sql = select + where + orderBy(pageable.getSort(), criteria) + " LIMIT :limit OFFSET :offset";
+        var sql = select + where + orderBy + " LIMIT :limit OFFSET :offset";
         params.put("limit", pageable.getPageSize());
         params.put("offset", pageable.getOffset());
 

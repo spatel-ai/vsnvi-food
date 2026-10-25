@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.vsnvi.vsnvi_food.common.domain.Money;
+import com.vsnvi.vsnvi_food.common.domain.ValidationException;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantStatus;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -114,6 +115,18 @@ class RestaurantTest {
         assertThatThrownBy(() -> restaurant.patchProfile(
                         new Restaurant.ProfilePatch(null, null, null, null, null, null, null, 31.0, null)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_reject_unknown_time_zone_as_validation_error() {
+        var restaurant = approvedWithHours(List.of());
+
+        assertThatThrownBy(() -> restaurant.patchProfile(
+                        new Restaurant.ProfilePatch(null, null, null, null, null, null, null, null, "Mars/Base")))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> restaurant.patchProfile(
+                        new Restaurant.ProfilePatch(null, null, null, null, null, null, null, null, "+99:99")))
+                .isInstanceOf(ValidationException.class);
     }
 
     private static Restaurant approvedWithHours(List<OpeningHours> hours) {

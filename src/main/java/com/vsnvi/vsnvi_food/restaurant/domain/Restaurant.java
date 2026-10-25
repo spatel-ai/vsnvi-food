@@ -2,6 +2,7 @@ package com.vsnvi.vsnvi_food.restaurant.domain;
 
 import com.vsnvi.vsnvi_food.common.domain.BaseEntity;
 import com.vsnvi.vsnvi_food.common.domain.Money;
+import com.vsnvi.vsnvi_food.common.domain.ValidationException;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantStatus;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
@@ -17,6 +18,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -113,7 +115,7 @@ public class Restaurant extends BaseEntity {
         if (profile.serviceableRadiusKm() <= 0 || profile.serviceableRadiusKm() > MAX_RADIUS_KM) {
             throw new IllegalArgumentException("serviceableRadiusKm out of range");
         }
-        ZoneId.of(profile.timeZone()); // rejects unknown zones
+        requireKnownZone(profile.timeZone());
         this.name = profile.name().strip();
         this.description = profile.description();
         this.cuisines = normalize(profile.cuisines());
@@ -174,6 +176,15 @@ public class Restaurant extends BaseEntity {
             throw new InvalidRestaurantStateException(status, "suspend");
         }
         status = RestaurantStatus.SUSPENDED;
+    }
+
+    /** An unknown or malformed IANA zone is client input, so it's a 400, not the 500 a raw DateTimeException gives. */
+    private static void requireKnownZone(String timeZone) {
+        try {
+            ZoneId.of(timeZone);
+        } catch (DateTimeException ex) {
+            throw new ValidationException("timeZone must be an IANA zone ID, e.g. Asia/Kolkata");
+        }
     }
 
     private static List<String> normalize(List<String> cuisines) {

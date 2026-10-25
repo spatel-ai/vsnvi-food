@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.vsnvi.vsnvi_food.TestcontainersConfiguration;
 import com.vsnvi.vsnvi_food.common.domain.Money;
 import com.vsnvi.vsnvi_food.common.domain.NotFoundException;
+import com.vsnvi.vsnvi_food.common.domain.ValidationException;
 import com.vsnvi.vsnvi_food.common.security.AuthenticatedUser;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantApi;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantStatus;
@@ -161,6 +162,16 @@ class RestaurantModuleTests {
                 criteria(null, null, "cafe", null, null), PageRequest.of(0, 10, Sort.by(Sort.Order.desc("rating"))));
 
         assertThat(page.getContent()).extracting(r -> r.restaurant().getId()).containsExactly(high, low, unrated);
+    }
+
+    @Test
+    void should_reject_unknown_sort_even_when_nothing_matches() {
+        var nothing = criteria(null, null, "no-such-cuisine-" + tag, null, null);
+
+        assertThatThrownBy(() -> service.search(nothing, PageRequest.of(0, 10, Sort.by("bogus"))))
+                .isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> service.search(nothing, PageRequest.of(0, 10, Sort.by("distance"))))
+                .isInstanceOf(ValidationException.class);
     }
 
     @Test
