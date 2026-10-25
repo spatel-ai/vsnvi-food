@@ -134,6 +134,9 @@ springdoc:
   swagger-ui:
     enabled: true
 
+openapi:
+  servers: http://localhost:${SERVER_PORT:8080}
+
 management:
   endpoint:
     health:
@@ -183,6 +186,10 @@ payment:
     key-id: ${RAZORPAY_KEY_ID}
     key-secret: ${RAZORPAY_KEY_SECRET}
     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+# Comma-separated base URLs listed in the spec's servers.
+openapi:
+  servers: ${API_BASE_URLS:}
 
 ---
 spring:

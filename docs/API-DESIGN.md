@@ -374,7 +374,8 @@ If prod ever needs the spec, expose `/v3/api-docs` to `ADMIN` only and keep Swag
   - Title `vsnvi-food API`.
   - Version taken from the build (`info.app.version`).
   - Contact and description.
-- **Servers:** one entry per environment, from config. No hard-coded hosts.
+- **Servers:** one entry per environment, from `openapi.servers` (`API_BASE_URLS` in dev and prod,
+  comma-separated). No hard-coded hosts.
 - **Security scheme:**
   - `bearerAuth`: `type: http`, `scheme: bearer`, `bearerFormat: JWT`.
   - Applied globally, so Swagger UI's "Authorize" button sends the access token.

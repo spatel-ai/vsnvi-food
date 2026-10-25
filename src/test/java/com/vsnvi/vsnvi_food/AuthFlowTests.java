@@ -48,14 +48,14 @@ class AuthFlowTests {
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.role").value("CUSTOMER"));
 
-        var rotated = refresh(tokens.get("refreshToken").asText());
+        var rotated = refresh(tokens.get("refreshToken").asString());
         mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer(rotated)))
                 .andExpect(status().isOk());
 
         // The first refresh token was rotated: using it again is reuse.
         mvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(refreshBody(tokens.get("refreshToken").asText())))
+                        .content(refreshBody(tokens.get("refreshToken").asString())))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
@@ -64,7 +64,7 @@ class AuthFlowTests {
     void should_reject_tampered_access_token_when_calling_api() throws Exception {
         var email = "tamper-" + UUID.randomUUID() + "@example.com";
         register(email, "CUSTOMER");
-        var access = login(email, "s3cret-pass").get("accessToken").asText();
+        var access = login(email, "s3cret-pass").get("accessToken").asString();
 
         mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + access + "x"))
                 .andExpect(status().isUnauthorized())
@@ -74,7 +74,7 @@ class AuthFlowTests {
     @Test
     void should_stop_refresh_and_login_when_admin_blocks_user() throws Exception {
         var email = "blocked-" + UUID.randomUUID() + "@example.com";
-        var userId = register(email, "CUSTOMER").get("id").asText();
+        var userId = register(email, "CUSTOMER").get("id").asString();
         var userTokens = login(email, "s3cret-pass");
         var admin = login("root-admin@example.com", "root-admin-pass");
 
@@ -96,7 +96,7 @@ class AuthFlowTests {
                 .untilAsserted(() -> mvc.perform(post("/api/v1/auth/refresh")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(refreshBody(
-                                        userTokens.get("refreshToken").asText())))
+                                        userTokens.get("refreshToken").asString())))
                         .andExpect(status().is4xxClientError()));
     }
 
@@ -147,7 +147,7 @@ class AuthFlowTests {
     }
 
     private static String bearer(JsonNode tokens) {
-        return "Bearer " + tokens.get("accessToken").asText();
+        return "Bearer " + tokens.get("accessToken").asString();
     }
 
     private static String loginBody(String email, String password) {

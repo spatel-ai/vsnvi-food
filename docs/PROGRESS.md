@@ -29,12 +29,12 @@ Modules are listed in build order: a module comes after every module it calls or
     - [x] `event_publication` migration (`V1__common_create_event_publication.sql`, from Modulith 2.1.2)
     - [x] `@EnableAsync` (`AsyncConfig`) and republish on restart
     - [x] Completion cleanup (`spring.modulith.events.completion-mode: delete`)
-- [ ] OpenAPI / Swagger UI (springdoc)
-  - [ ] `OpenApiConfig`: info, servers, `bearerAuth` security scheme
-  - [ ] One `GroupedOpenApi` per module
-  - [ ] `OpenApiCustomizer`: shared `ProblemDetail` schema and default error responses
-  - [ ] `@IdempotencyKeyHeader` meta-annotation
-  - [ ] Profile config: enabled in `local`/`dev`, disabled in `prod`; security allowlist in non-prod
+- [x] OpenAPI / Swagger UI (springdoc)
+  - [x] `OpenApiConfig`: info, servers, `bearerAuth` security scheme
+  - [x] One `GroupedOpenApi` per module
+  - [x] `OpenApiCustomizer`: shared `ProblemDetail` schema and default error responses
+  - [x] `@IdempotencyKeyHeader` meta-annotation
+  - [x] Profile config: enabled in `local`/`dev`, disabled in `prod`; security allowlist in non-prod
   - [ ] CI: export `target/openapi.json` as a build artifact
 - [ ] Flyway baseline migration
 - [x] Testcontainers integration test base (Postgres and Redis)
