@@ -17,7 +17,9 @@ record SearchRestaurantsRequest(
         @DecimalMin("-180.0") @DecimalMax("180.0") @Schema(example = "77.5946")
         Double lng,
 
-        @Pattern(regexp = RestaurantValidation.CUISINE) @Schema(example = "north-indian")
+        @Size(max = RestaurantValidation.CUISINE_MAX_LENGTH)
+        @Pattern(regexp = RestaurantValidation.CUISINE)
+        @Schema(example = "north-indian")
         String cuisine,
 
         @DecimalMin("0.0") @DecimalMax("5.0") BigDecimal minRating,
