@@ -16,7 +16,13 @@ import java.util.List;
 record RegisterRestaurantRequest(
         @NotBlank @Size(max = 120) String name,
         @Size(max = 1000) String description,
-        @NotEmpty @Size(max = 10) List<@NotBlank @Pattern(regexp = RestaurantValidation.CUISINE) String> cuisines,
+
+        @NotEmpty @Size(max = 10)
+        List<
+                        @NotBlank @Size(max = RestaurantValidation.CUISINE_MAX_LENGTH)
+                        @Pattern(regexp = RestaurantValidation.CUISINE) String>
+                cuisines,
+
         @NotBlank @Size(max = 300) String addressLine,
         @NotBlank @Size(max = 100) String city,
         @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,

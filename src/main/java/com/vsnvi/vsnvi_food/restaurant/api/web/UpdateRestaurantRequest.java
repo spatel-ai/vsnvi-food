@@ -16,7 +16,13 @@ record UpdateRestaurantRequest(
         String name,
 
         @Size(max = 1000) String description,
-        @Size(min = 1, max = 10) List<@NotBlank @Pattern(regexp = RestaurantValidation.CUISINE) String> cuisines,
+
+        @Size(min = 1, max = 10)
+        List<
+                        @NotBlank @Size(max = RestaurantValidation.CUISINE_MAX_LENGTH)
+                        @Pattern(regexp = RestaurantValidation.CUISINE) String>
+                cuisines,
+
         @Size(min = 1, max = 300) String addressLine,
         @Size(min = 1, max = 100) String city,
         @DecimalMin("-90.0") @DecimalMax("90.0") Double latitude,

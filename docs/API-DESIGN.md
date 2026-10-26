@@ -217,7 +217,7 @@ Roles: **C** = CUSTOMER, **O** = RESTAURANT_OWNER, **R** = RIDER, **A** = ADMIN,
 |--------|------------------------------------------|--------|---------------------------------------------------|
 | GET    | `/api/v1/restaurants`                    | Public | Search by `lat`, `lng`, `cuisine`, `minRating`, `isOpen` and `q` (paginated; sort `distance`, `rating`, `name`). With `lat`/`lng`, only restaurants whose serviceable radius covers the point |
 | GET    | `/api/v1/restaurants/{id}`               | Public | Restaurant details (404 unless approved, except for its owner and admins) |
-| POST   | `/api/v1/restaurants`                    | O      | Create a restaurant (starts pending approval)     |
+| POST   | `/api/v1/restaurants`                    | O      | Create a restaurant (starts pending approval). `cuisines`: 1–10 lower-case kebab-case values, each at most 40 characters |
 | PATCH  | `/api/v1/restaurants/{id}`               | O      | Update your own restaurant, including `deliveryFee` and `packagingCharge` |
 | PUT    | `/api/v1/restaurants/{id}/opening-hours` | O      | Set opening hours                                 |
 | POST   | `/api/v1/restaurants/{id}/toggle-open`   | O      | Temporarily open or close (`{"open": bool}`, so repeats are safe) |

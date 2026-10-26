@@ -86,6 +86,13 @@ class RestaurantControllerTest {
     }
 
     @Test
+    void should_reject_search_when_cuisine_is_too_long() throws Exception {
+        mvc.perform(get("/api/v1/restaurants").param("cuisine", "a".repeat(41)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
     void should_return_details_anonymously_when_visible() throws Exception {
         given(restaurantService.details(RESTAURANT_ID))
                 .willReturn(new RestaurantService.Details(restaurant(), List.of(), false));
@@ -128,6 +135,28 @@ class RestaurantControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors.length()").value(2));
+    }
+
+    @Test
+    void should_reject_registration_when_cuisine_is_too_long() throws Exception {
+        mvc.perform(post("/api/v1/restaurants")
+                        .header(HttpHeaders.AUTHORIZATION, owner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REGISTER_BODY.replace("north-indian", "a".repeat(41))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        then(restaurantService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void should_reject_update_when_cuisine_is_too_long() throws Exception {
+        mvc.perform(patch("/api/v1/restaurants/" + RESTAURANT_ID)
+                        .header(HttpHeaders.AUTHORIZATION, owner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cuisines\":[\"" + "a".repeat(41) + "\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        then(restaurantService).shouldHaveNoInteractions();
     }
 
     @Test

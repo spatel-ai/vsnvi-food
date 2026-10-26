@@ -82,15 +82,15 @@ auth:
     access-token-ttl: 15m
     refresh-token-ttl: 30d
   login-rate-limit:
-    per-ip: 30                 # attempts per client IP per window
+    per-ip: 30 # attempts per client IP per window
     ip-window: 5m
-    failures-per-account: 10   # failed attempts per account per window; a success resets it
+    failures-per-account: 10 # failed attempts per account per window; a success resets it
     account-window: 15m
   register-rate-limit:
-    per-ip: 20                 # registrations per client IP per window
+    per-ip: 20 # registrations per client IP per window
     ip-window: 1h
   refresh-rate-limit:
-    per-ip: 120                # refreshes per client IP per window
+    per-ip: 120 # refreshes per client IP per window
     ip-window: 5m
 
 pricing:
@@ -130,8 +130,8 @@ auth:
     signing-key: ${JWT_SIGNING_KEY:XlVQOwLK9097/w0C484DR3kYNn0ofsHfk0v+o7bdXKg=}
   admin-bootstrap:
     # Both empty: AdminBootstrap does nothing.
-    email: ${ADMIN_BOOTSTRAP_EMAIL:}
-    password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+    email: ${ADMIN_BOOTSTRAP_EMAIL:admin@gmail.com}
+    password: ${ADMIN_BOOTSTRAP_PASSWORD:admin123}
 
 payment:
   razorpay:

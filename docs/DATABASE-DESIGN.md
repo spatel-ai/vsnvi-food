@@ -96,7 +96,7 @@ Key cardinalities:
   A payment has zero or more refunds.
 - **Coupons:** a coupon has many redemptions (`REDEEMED` or `RELEASED`). An order has at most one
   redemption. A coupon with no `restaurant_id` is a platform coupon.
-- **Restaurants:** a restaurant holds its own delivery fee and packaging charge.
+- **Restaurants:** a restaurant holds its own delivery fee and packaging charge. `cuisines` is a GIN-indexed `TEXT[]`; a CHECK limits it to 1–10 kebab-case values of at most 40 characters, because a GIN entry over ~2.7 KB fails the insert.
 - **Delivery tasks:** an order has at most one active delivery task, and a partner has at most one
   active task (no batching in v1). A task holds its delivery OTP until the task ends.
 
