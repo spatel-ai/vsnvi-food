@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class VsnviFoodApplication {
 
     public static void main(String[] args) {
-         SpringApplication.run(VsnviFoodApplication.class, 
-            args);
+        SpringApplication.run(VsnviFoodApplication.class, args);
     }
 }
