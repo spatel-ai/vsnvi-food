@@ -16,6 +16,10 @@ spring:
     default: local
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  autoconfigure:
+    # Bearer tokens only (ADR-002): no default in-memory user or generated password. A property, not
+    # @SpringBootApplication(exclude), so test slices honor it too.
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   jpa:
     open-in-view: false
     hibernate:
