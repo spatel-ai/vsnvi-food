@@ -86,11 +86,11 @@ Modules are listed in build order: a module comes after every module it calls or
 ## Phase 2 — Promotions, cart, payments, orders
 
 ### promotion
-- [ ] Migration: coupons, coupon_redemptions
-- [ ] Domain: `Coupon` (FLAT, PERCENT with cap, FREE_DELIVERY), rules (validity, min subtotal, per-customer/total limits, first order), `CouponRedemption`
-- [ ] Public facade: `PromotionApi` (`evaluate`, `redeem` with row lock, `release`)
-- [ ] API: admin platform coupons, owner restaurant coupons, available coupons for customers
-- [ ] Tests (every rule, limit concurrency, release on cancel)
+- [x] Migration: coupons, coupon_redemptions
+- [x] Domain: `Coupon` (FLAT, PERCENT with cap, FREE_DELIVERY), rules (validity, min subtotal, per-customer/total limits, first order), `CouponRedemption`
+- [x] Public facade: `PromotionApi` (`evaluate`, `redeem` with row lock, `release`)
+- [x] API: admin platform coupons, owner restaurant coupons, available coupons for customers
+- [x] Tests (every rule, limit concurrency, release on cancel)
 
 ### cart
 - [ ] Migration: carts, cart_items
@@ -120,6 +120,7 @@ Modules are listed in build order: a module comes after every module it calls or
 - [ ] Events: `OrderPlaced`, `OrderAccepted`, `OrderRejected`, `OrderReadyForPickup`, `OrderPickedUp`, `OrderDelivered`, `OrderCancelled`
 - [ ] Listeners: `PaymentSucceeded` (ignored unless `PAYMENT_PENDING`), `PaymentFailed` (no state change), `RefundIssued`
 - [ ] Checkout: pricing snapshot from `CartApi`, `PromotionApi.redeem` (passes `isFirstOrder`), `CartApi.clear`, then `PaymentApi.openGatewayOrder` after commit
+  - Serialize a customer's checkouts (e.g. lock the customer's row) before computing `isFirstOrder`, and test concurrent first-order checkouts (`PromotionApi.redeem` javadoc)
 - [ ] Calls `PaymentApi.cancelPayment` and `PromotionApi.release` on reject, cancel and timeout, and `PaymentApi.markCollected` on COD delivery
 - [ ] Payment timeout job: cancels orders stuck in `PAYMENT_PENDING` for 15 minutes
 - [ ] API: `/orders`, `/users/me/orders`, `/restaurants/{id}/orders`

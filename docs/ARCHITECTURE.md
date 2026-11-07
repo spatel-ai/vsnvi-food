@@ -148,7 +148,7 @@ What each key dependency is used for:
 | `cart → promotion`    | `evaluate` a coupon for the price preview                          | —                                                    |
 | `order → cart`        | price the cart; `clear` it at checkout (same transaction)          | —                                                    |
 | `order → promotion`   | `redeem` at checkout; `release` on reject/cancel/timeout           | —                                                    |
-| `promotion → restaurant` | ownership check for restaurant coupons                          | —                                                    |
+| `promotion → restaurant` | ownership check for restaurant coupons; approval status and delivery fee for the available-coupons list | — |
 | `order → payment`     | `createPayment` inside the checkout transaction, then `openGatewayOrder` after commit; on reject/cancel/timeout `cancelPayment` (refunds if captured, voids otherwise); `markCollected` (COD) | `PaymentSucceeded`, `PaymentFailed`, `RefundIssued` |
 | `delivery → auth`     | —                                                                 | `UserRegistered` (role `RIDER`: create a `PENDING_APPROVAL` partner profile) |
 | `delivery → order`    | `markPartnerAssigned`, `markPickedUp`, `markDelivered`; ownership and location reads | `OrderReadyForPickup` (start assignment), `OrderCancelled` (cancel task) |
@@ -536,8 +536,8 @@ discount amount: `promotion` calculates it (`evaluate` for the preview, `redeem`
      - calls `PromotionApi.redeem(code, customerId, orderId, pricingContext, isFirstOrder)`. This
        locks the coupon row, re-checks every rule, records a `CouponRedemption` and returns the
        final discount.
-     If the result differs from the preview, checkout fails with `422`, and the client re-reads
-     the cart.
+     If the result differs from the preview, checkout fails with `422 PRICE_CHANGED`, and the
+     client re-reads the cart.
   3. On rejection, cancellation (including the payment timeout), `order` calls
      `PromotionApi.release(orderId)`. The redemption is marked `RELEASED`, so the customer gets the
      use back and the total count drops.
@@ -547,6 +547,26 @@ discount amount: `promotion` calculates it (`evaluate` for the preview, `redeem`
 - **Concurrency:** `totalLimit` and `perCustomerLimit` are enforced with a row lock
   (`SELECT … FOR UPDATE`) on the coupon inside the order transaction, so two checkouts can't both
   take the last use.
+- **`PromotionApi` contract:**
+  - Codes match regardless of case; they are stored upper-case and unique platform-wide.
+  - `evaluate` and `redeem` return the discount split into `itemDiscount` (lowers the taxable
+    amount) and `deliveryDiscount` (`FREE_DELIVERY` only). A `FREE_DELIVERY` coupon at a restaurant
+    whose delivery fee is already 0 is `COUPON_NOT_APPLICABLE`.
+  - Failures are a `CouponRejectedException` (in `promotion.api`, so `cart` can catch it) with
+    `COUPON_INVALID`, `COUPON_NOT_APPLICABLE` or `COUPON_LIMIT_REACHED`.
+  - `redeem` requires an existing transaction (`Propagation.MANDATORY`), so the redemption commits
+    or rolls back with the order. Redeeming again for the same order returns the recorded
+    discount without using the coupon a second time.
+  - A rejection from `evaluate` doesn't mark the caller's transaction rollback-only, so `cart` can
+    catch it and still commit. A rejection from `redeem` does, which is fine because checkout fails.
+  - A first-order coupon can be used once per customer even without a `perCustomerLimit`.
+  - **Checkout must serialize a customer's checkouts** (e.g. lock the customer's row) before it
+    computes `isFirstOrder`: the coupon lock stops one first-order coupon being used twice, but two
+    different first-order coupons lock different rows. Checkout runs at READ COMMITTED, so the usage
+    count after the lock sees other checkouts' commits.
+  - `release` is idempotent and a no-op for an order without a coupon.
+  - Usage limits count the `REDEEMED` rows of `coupon_redemptions` while the coupon row is locked,
+    so there is no separate counter to drift.
 - **Funding and settlement** of discounts between the platform and restaurants are out of scope
   for v1.
 
