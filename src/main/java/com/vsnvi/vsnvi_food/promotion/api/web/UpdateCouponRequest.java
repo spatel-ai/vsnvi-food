@@ -15,7 +15,8 @@ import java.time.Instant;
 
 /** Partial update: null fields stay unchanged. The code and type can't change, and limits can't be removed. */
 record UpdateCouponRequest(
-        @Size(max = 200) @Pattern(regexp = "[^\\p{Cntrl}]*", message = "must not contain control characters")
+        @Size(max = 200)
+        @Pattern(regexp = "[^\\p{Cc}\\p{Cf}]*", message = "must not contain control or invisible formatting characters")
         String description,
 
         @Valid MoneyInput amountOff,

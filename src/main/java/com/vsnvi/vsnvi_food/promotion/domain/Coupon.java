@@ -41,6 +41,13 @@ public class Coupon extends BaseEntity {
     static final Instant EARLIEST = Instant.parse("2020-01-01T00:00:00Z");
 
     static final Instant LATEST = Instant.parse("2100-01-01T00:00:00Z");
+
+    /** Most coupons a restaurant may have active (switched on and not yet expired) at once. */
+    public static final int MAX_ACTIVE_PER_RESTAURANT = 50;
+
+    /** One message for unknown, inactive, not-yet-valid, expired and other-restaurant codes. */
+    public static final String INVALID_MESSAGE = "This coupon code isn't valid";
+
     private static final Pattern CODE = Pattern.compile("^[A-Z0-9][A-Z0-9-]{2,29}$");
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
@@ -172,17 +179,15 @@ public class Coupon extends BaseEntity {
      * @throws CouponRejectedException when a rule fails
      */
     public CouponDiscount apply(PricingContext context, Instant now, Usage usage, Optional<Boolean> isFirstOrder) {
-        if (!active) {
-            throw CouponRejectedException.invalid("This coupon is no longer active");
+        // Inactive, outside its window and another restaurant's coupon all look like an unknown code, so customers
+        // can't probe which codes exist (e.g. a campaign that hasn't started yet).
+        if (!isUsableAt(now) || (!isPlatform() && !restaurantId.equals(context.restaurantId()))) {
+            throw CouponRejectedException.invalid(INVALID_MESSAGE);
         }
-        if (now.isBefore(validFrom)) {
-            throw CouponRejectedException.invalid("This coupon is not valid yet");
-        }
-        if (!now.isBefore(validUntil)) {
-            throw CouponRejectedException.invalid("This coupon has expired");
-        }
-        if (!isPlatform() && !restaurantId.equals(context.restaurantId())) {
-            throw CouponRejectedException.notApplicable("This coupon is not valid at this restaurant");
+        var currency = minOrderSubtotal.currency();
+        if (!currency.equals(context.itemSubtotal().currency())
+                || !currency.equals(context.deliveryFee().currency())) {
+            throw CouponRejectedException.notApplicable("This coupon can't be used in this currency");
         }
         if (minOrderSubtotal.isGreaterThan(context.itemSubtotal())) {
             throw CouponRejectedException.notApplicable(
@@ -256,6 +261,9 @@ public class Coupon extends BaseEntity {
                 && terms.perCustomerLimit() > terms.totalLimit()) {
             throw new ValidationException("perCustomerLimit can't exceed totalLimit");
         }
+        if (terms.firstOrderOnly() && terms.perCustomerLimit() != null && terms.perCustomerLimit() > 1) {
+            throw new ValidationException("A first-order coupon can be used only once per customer");
+        }
         switch (type) {
             case FLAT -> {
                 if (terms.amountOff() == null || terms.amountOff().amount().signum() <= 0) {
@@ -270,7 +278,7 @@ public class Coupon extends BaseEntity {
                 if (terms.percentOff() == null
                         || terms.percentOff().signum() <= 0
                         || terms.percentOff().compareTo(HUNDRED) > 0
-                        || terms.percentOff().scale() > 2) {
+                        || terms.percentOff().stripTrailingZeros().scale() > 2) {
                     throw new ValidationException("A PERCENT coupon needs a percentOff above 0 and at most 100");
                 }
                 if (terms.maxDiscount() == null || terms.maxDiscount().amount().signum() <= 0) {

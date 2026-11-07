@@ -2,6 +2,7 @@ package com.vsnvi.vsnvi_food.promotion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
@@ -19,6 +20,8 @@ import com.vsnvi.vsnvi_food.promotion.api.PromotionApi;
 import com.vsnvi.vsnvi_food.promotion.application.CouponService;
 import com.vsnvi.vsnvi_food.promotion.domain.Coupon;
 import com.vsnvi.vsnvi_food.promotion.domain.CouponCodeTakenException;
+import com.vsnvi.vsnvi_food.promotion.domain.CouponQuotaReachedException;
+import com.vsnvi.vsnvi_food.promotion.domain.RestaurantNotApprovedException;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantApi;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantStatus;
 import com.vsnvi.vsnvi_food.restaurant.api.RestaurantSummary;
@@ -38,6 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,7 +169,119 @@ class PromotionModuleTests {
         assertThat(deactivated.active()).isFalse();
     }
 
+    @Test
+    void should_refuse_coupon_creation_when_restaurant_is_not_approved() {
+        for (var status : List.of(RestaurantStatus.PENDING_APPROVAL, RestaurantStatus.SUSPENDED)) {
+            given(restaurantApi.findById(restaurantId)).willReturn(Optional.of(restaurant(status)));
+
+            assertThatThrownBy(() -> couponService.createRestaurantCoupon(restaurantId, flat(code(), "50")))
+                    .as(status.name())
+                    .isInstanceOf(RestaurantNotApprovedException.class)
+                    .extracting(e -> ((DomainException) e).errorCode())
+                    .isEqualTo(ErrorCode.INVALID_RESTAURANT_STATE);
+        }
+    }
+
+    @Test
+    void should_cap_active_coupons_per_restaurant_when_creating_more_than_fifty() {
+        var first = couponService.createRestaurantCoupon(restaurantId, flat(code(), "10"));
+        couponService.createRestaurantCoupon(restaurantId, flatValid(code(), NOW.minus(Duration.ofDays(2)), NOW));
+        for (int i = 1; i < Coupon.MAX_ACTIVE_PER_RESTAURANT; i++) {
+            couponService.createRestaurantCoupon(restaurantId, flat(code(), "10"));
+        }
+
+        // 50 active (the expired one doesn't count): the next is refused until one is deactivated.
+        assertThatThrownBy(() -> couponService.createRestaurantCoupon(restaurantId, flat(code(), "10")))
+                .isInstanceOf(CouponQuotaReachedException.class);
+        couponService.deactivate(first.id());
+        assertThat(couponService.createRestaurantCoupon(restaurantId, flat(code(), "10")))
+                .isNotNull();
+    }
+
+    @Test
+    void should_return_coupon_to_its_owner_or_an_admin_and_not_found_to_anyone_else() {
+        var coupon = couponService.createRestaurantCoupon(restaurantId, flat(code(), "50"));
+
+        assertThat(couponService.get(coupon.id()).code()).isEqualTo(coupon.code());
+        signInAs(UUID.randomUUID(), "ADMIN");
+        assertThat(couponService.get(coupon.id()).id()).isEqualTo(coupon.id());
+        signInAs(UUID.randomUUID(), "RESTAURANT_OWNER");
+        assertThatThrownBy(() -> couponService.get(coupon.id())).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void should_keep_both_changes_when_an_update_and_a_deactivation_run_concurrently() throws Exception {
+        var coupon = couponService.createRestaurantCoupon(restaurantId, flat(code(), "50"));
+
+        var deactivated = secondAfterFirstCommits(
+                () -> asOwner(() -> couponService.update(coupon.id(), patchTotalLimit(7))),
+                () -> asOwner(() -> couponService.deactivate(coupon.id())));
+
+        assertThat(deactivated.active()).isFalse();
+        assertThat(deactivated.totalLimit()).isEqualTo(7);
+        assertThat(couponService.get(coupon.id()))
+                .satisfies(c -> assertThat(c.active()).isFalse())
+                .satisfies(c -> assertThat(c.totalLimit()).isEqualTo(7));
+    }
+
+    @Test
+    void should_let_a_customer_use_a_once_per_customer_coupon_only_once_when_redeeming_concurrently() throws Exception {
+        for (var draft : List.of(flat(code(), "50", 1, null, false), flat(code(), "50", null, null, true))) {
+            couponService.createRestaurantCoupon(restaurantId, draft);
+            var customer = UUID.randomUUID();
+
+            assertThatThrownBy(() -> secondAfterFirstCommits(
+                            () -> promotionApi.redeem(draft.code(), customer, UUID.randomUUID(), context("400"), true),
+                            () -> redeem(draft.code(), customer, UUID.randomUUID(), true)))
+                    .as(draft.firstOrderOnly() ? "first order only" : "perCustomerLimit 1")
+                    .isInstanceOf(ExecutionException.class)
+                    .cause()
+                    .isInstanceOf(CouponRejectedException.class)
+                    .extracting(e -> ((DomainException) e).errorCode())
+                    .isEqualTo(ErrorCode.COUPON_LIMIT_REACHED);
+        }
+    }
+
+    @Test
+    void should_replay_instead_of_failing_when_the_same_order_redeems_concurrently() throws Exception {
+        var code = code();
+        couponService.createRestaurantCoupon(restaurantId, flat(code, "50", null, 5, false));
+        var customer = UUID.randomUUID();
+        var order = UUID.randomUUID();
+
+        var replayed = secondAfterFirstCommits(
+                () -> promotionApi.redeem(code, customer, order, context("400"), true),
+                () -> redeem(code, customer, order, true));
+
+        assertThat(replayed.itemDiscount()).isEqualTo(Money.inr("50"));
+        // One use recorded, not two: four more fit under totalLimit 5.
+        for (int i = 0; i < 4; i++) {
+            redeem(code, UUID.randomUUID(), UUID.randomUUID(), true);
+        }
+        assertRejected(() -> redeem(code, UUID.randomUUID(), UUID.randomUUID(), true), ErrorCode.COUPON_LIMIT_REACHED);
+    }
+
     // --- evaluate (cart preview) ---
+
+    @Test
+    void should_give_the_same_answer_when_code_is_unknown_inactive_or_another_restaurants() {
+        var inactive = couponService.createRestaurantCoupon(restaurantId, flat(code(), "50"));
+        couponService.deactivate(inactive.id());
+        var otherRestaurant = UUID.randomUUID();
+        given(restaurantApi.isOwnedBy(otherRestaurant, ownerId)).willReturn(true);
+        given(restaurantApi.findById(otherRestaurant)).willReturn(Optional.of(restaurant(RestaurantStatus.APPROVED)));
+        var elsewhere = couponService.createRestaurantCoupon(otherRestaurant, flat(code(), "50"));
+
+        var answers = List.of(code(), inactive.code(), elsewhere.code()).stream()
+                .map(c -> catchThrowableOfType(
+                        CouponRejectedException.class,
+                        () -> promotionApi.evaluate(c, UUID.randomUUID(), context("400"))))
+                .map(e -> e.errorCode() + ": " + e.getMessage())
+                .distinct()
+                .toList();
+
+        assertThat(answers).containsExactly("COUPON_INVALID: " + Coupon.INVALID_MESSAGE);
+    }
 
     @Test
     void should_reserve_nothing_when_evaluating_in_any_case() {
@@ -191,8 +307,7 @@ class PromotionModuleTests {
     @Test
     void should_waive_delivery_fee_when_free_delivery_coupon_is_loaded_from_database() {
         var code = code();
-        couponService.createRestaurantCoupon(
-                restaurantId, new CouponService.NewCoupon(code, CouponType.FREE_DELIVERY, terms(null, null, null)));
+        couponService.createRestaurantCoupon(restaurantId, freeDelivery(code));
 
         var discount = promotionApi.evaluate(code, UUID.randomUUID(), context("400"));
 
@@ -378,44 +493,17 @@ class PromotionModuleTests {
         var usedUpByOthers = code();
         couponService.createRestaurantCoupon(restaurantId, flat(usable, "50"));
         couponService.createRestaurantCoupon(restaurantId, flat(usedUpByOthers, "50", null, 1, false));
-        couponService.createRestaurantCoupon(
-                restaurantId,
-                new CouponService.NewCoupon(
-                        expired,
-                        CouponType.FLAT,
-                        new Coupon.Terms(
-                                null,
-                                Money.inr("10"),
-                                null,
-                                null,
-                                Money.inr("0"),
-                                NOW.minus(Duration.ofDays(2)),
-                                NOW, // validUntil is exclusive
-                                null,
-                                null,
-                                false)));
+        // validUntil is exclusive, so a coupon ending exactly now is expired.
+        couponService.createRestaurantCoupon(restaurantId, flatValid(expired, NOW.minus(Duration.ofDays(2)), NOW));
         couponService.createRestaurantCoupon(restaurantId, flat(firstOrder, "50", null, null, true));
         couponService.createRestaurantCoupon(restaurantId, flat(usedUp, "50", 1, null, false));
         var toDeactivate = couponService.createRestaurantCoupon(restaurantId, flat(inactive, "50"));
         couponService.deactivate(toDeactivate.id());
         couponService.createRestaurantCoupon(
-                restaurantId,
-                new CouponService.NewCoupon(
-                        notYetValid,
-                        CouponType.FLAT,
-                        new Coupon.Terms(
-                                null,
-                                Money.inr("10"),
-                                null,
-                                null,
-                                Money.inr("0"),
-                                NOW.plusSeconds(60),
-                                NOW.plus(Duration.ofDays(2)),
-                                null,
-                                null,
-                                false)));
+                restaurantId, flatValid(notYetValid, NOW.plusSeconds(60), NOW.plus(Duration.ofDays(2))));
         var otherRestaurant = UUID.randomUUID();
         given(restaurantApi.isOwnedBy(otherRestaurant, ownerId)).willReturn(true);
+        given(restaurantApi.findById(otherRestaurant)).willReturn(Optional.of(restaurant(RestaurantStatus.APPROVED)));
         couponService.createRestaurantCoupon(otherRestaurant, flat(otherRestaurants, "50"));
         signInAs(UUID.randomUUID(), "ADMIN");
         var platform = code();
@@ -442,9 +530,7 @@ class PromotionModuleTests {
     @Test
     void should_hide_free_delivery_coupon_when_restaurant_already_delivers_free() {
         var freeDelivery = code();
-        couponService.createRestaurantCoupon(
-                restaurantId,
-                new CouponService.NewCoupon(freeDelivery, CouponType.FREE_DELIVERY, terms(null, null, null)));
+        couponService.createRestaurantCoupon(restaurantId, freeDelivery(freeDelivery));
         var noDeliveryFee = new RestaurantSummary(
                 restaurantId,
                 ownerId,
@@ -507,31 +593,49 @@ class PromotionModuleTests {
         return new CouponService.NewCoupon(
                 code,
                 CouponType.FLAT,
-                new Coupon.Terms(
-                        null,
-                        Money.inr(amountOff),
-                        null,
-                        null,
-                        Money.inr("0"),
-                        NOW.minus(Duration.ofDays(1)),
-                        NOW.plus(Duration.ofDays(1)),
-                        perCustomer,
-                        total,
-                        firstOrderOnly));
+                null,
+                Money.inr(amountOff),
+                null,
+                null,
+                null,
+                NOW.minus(Duration.ofDays(1)),
+                NOW.plus(Duration.ofDays(1)),
+                perCustomer,
+                total,
+                firstOrderOnly);
+    }
+
+    /** A FLAT coupon with its own validity window ({@code until} is exclusive). */
+    private static CouponService.NewCoupon flatValid(String code, Instant from, Instant until) {
+        return new CouponService.NewCoupon(
+                code, CouponType.FLAT, null, Money.inr("10"), null, null, null, from, until, null, null, false);
     }
 
     private static CouponService.NewCoupon percent(String code, String percentOff, String cap) {
         return new CouponService.NewCoupon(
-                code, CouponType.PERCENT, terms(null, new BigDecimal(percentOff), Money.inr(cap)));
+                code,
+                CouponType.PERCENT,
+                null,
+                null,
+                new BigDecimal(percentOff),
+                Money.inr(cap),
+                null,
+                NOW.minus(Duration.ofDays(1)),
+                NOW.plus(Duration.ofDays(1)),
+                null,
+                null,
+                false);
     }
 
-    private static Coupon.Terms terms(Money amountOff, BigDecimal percentOff, Money maxDiscount) {
-        return new Coupon.Terms(
+    private static CouponService.NewCoupon freeDelivery(String code) {
+        return new CouponService.NewCoupon(
+                code,
+                CouponType.FREE_DELIVERY,
                 null,
-                amountOff,
-                percentOff,
-                maxDiscount,
-                Money.inr("0"),
+                null,
+                null,
+                null,
+                null,
                 NOW.minus(Duration.ofDays(1)),
                 NOW.plus(Duration.ofDays(1)),
                 null,
@@ -546,6 +650,47 @@ class PromotionModuleTests {
     private RestaurantSummary restaurant(RestaurantStatus status) {
         return new RestaurantSummary(
                 restaurantId, ownerId, "R", status, 12.97, 77.59, 5, Money.inr("40"), Money.inr("10"), true);
+    }
+
+    /**
+     * Runs {@code first} in a transaction that stays open, starts {@code second} on another thread, checks that
+     * {@code second} is blocked (on the coupon row lock), then commits {@code first} and returns {@code second}'s result.
+     * If {@code second} fails, its exception comes back wrapped in an {@link ExecutionException}.
+     */
+    private <T> T secondAfterFirstCommits(Runnable first, Supplier<T> second) throws Exception {
+        var firstDone = new CountDownLatch(1);
+        var commitFirst = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var firstTx = CompletableFuture.runAsync(
+                    () -> tx.executeWithoutResult(status -> {
+                        first.run();
+                        firstDone.countDown();
+                        await(commitFirst);
+                    }),
+                    pool);
+            assertThat(firstDone.await(10, TimeUnit.SECONDS)).isTrue();
+            var secondResult = CompletableFuture.supplyAsync(second, pool);
+            assertThatThrownBy(() -> secondResult.get(500, TimeUnit.MILLISECONDS))
+                    .as("second must wait for the first transaction's lock")
+                    .isInstanceOf(TimeoutException.class);
+            commitFirst.countDown();
+            firstTx.get(10, TimeUnit.SECONDS);
+            return secondResult.get(10, TimeUnit.SECONDS);
+        }
+    }
+
+    /** Runs as this test's owner; worker threads don't inherit the security context. */
+    private <T> T asOwner(Supplier<T> action) {
+        signInAs(ownerId, "RESTAURANT_OWNER");
+        try {
+            return action.get();
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private static CouponService.CouponPatch patchTotalLimit(int totalLimit) {
+        return new CouponService.CouponPatch(null, null, null, null, null, null, null, null, totalLimit, null);
     }
 
     /** Runs as the owner on another thread (own transaction, own security context) and waits for the commit. */

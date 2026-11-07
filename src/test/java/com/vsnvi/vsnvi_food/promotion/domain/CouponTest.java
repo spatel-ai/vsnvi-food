@@ -195,9 +195,9 @@ class CouponTest {
         var coupon = Coupon.create("OURS10", RESTAURANT, CouponType.FLAT, terms(Money.inr("10"), null, null));
         var elsewhere = new PricingContext(UUID.randomUUID(), Money.inr("500"), Money.inr("40"));
 
+        // Reported like an unknown code, so customers can't learn other restaurants' codes.
         assertRejected(
-                () -> coupon.apply(elsewhere, NOW, Coupon.Usage.NONE, Optional.empty()),
-                ErrorCode.COUPON_NOT_APPLICABLE);
+                () -> coupon.apply(elsewhere, NOW, Coupon.Usage.NONE, Optional.empty()), ErrorCode.COUPON_INVALID);
         assertThat(coupon.apply(context("500", "40"), NOW, Coupon.Usage.NONE, Optional.empty())
                         .itemDiscount())
                 .isEqualTo(Money.inr("10"));
@@ -326,6 +326,38 @@ class CouponTest {
         assertThatThrownBy(() -> Coupon.create("FAR1", null, CouponType.FLAT, farFuture))
                 .isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> Coupon.create("OLD1", null, CouponType.FLAT, ancient))
+                .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void should_accept_percent_when_extra_decimals_are_only_trailing_zeros() {
+        assertThat(percent("10.000", "100").getPercentOff()).isEqualByComparingTo("10");
+    }
+
+    @Test
+    void should_reject_as_not_applicable_when_context_uses_another_currency() {
+        var usd = new PricingContext(RESTAURANT, Money.of("500", "USD"), Money.of("40", "USD"));
+
+        assertRejected(
+                () -> flat(Money.inr("100")).apply(usd, NOW, Coupon.Usage.NONE, Optional.empty()),
+                ErrorCode.COUPON_NOT_APPLICABLE);
+    }
+
+    @Test
+    void should_reject_terms_when_first_order_coupon_allows_more_than_one_use_per_customer() {
+        var terms = new Coupon.Terms(
+                null,
+                Money.inr("50"),
+                null,
+                null,
+                ZERO,
+                NOW.minus(Duration.ofDays(1)),
+                NOW.plus(Duration.ofDays(1)),
+                2,
+                null,
+                true);
+
+        assertThatThrownBy(() -> Coupon.create("FIRST2", null, CouponType.FLAT, terms))
                 .isInstanceOf(ValidationException.class);
     }
 

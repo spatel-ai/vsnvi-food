@@ -57,6 +57,11 @@ public class RedemptionService implements PromotionApi {
             return replay(existing.get(), code, customerId);
         }
         var coupon = lookup(code).flatMap(coupons::findByCodeForUpdate).orElseThrow(RedemptionService::unknown);
+        // A concurrent redeem for the same order may have committed while we waited for the lock.
+        var committedMeanwhile = redemptions.findByOrderId(orderId);
+        if (committedMeanwhile.isPresent()) {
+            return replay(committedMeanwhile.get(), code, customerId);
+        }
         var discount =
                 coupon.apply(context, Instant.now(clock), usageOf(coupon, customerId), Optional.of(isFirstOrder));
         redemptions.save(CouponRedemption.redeem(coupon.getId(), customerId, orderId, discount.total()));
@@ -101,6 +106,6 @@ public class RedemptionService implements PromotionApi {
     }
 
     private static CouponRejectedException unknown() {
-        return CouponRejectedException.invalid("Unknown coupon code");
+        return CouponRejectedException.invalid(Coupon.INVALID_MESSAGE);
     }
 }

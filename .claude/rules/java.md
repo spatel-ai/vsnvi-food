@@ -49,7 +49,7 @@ Modules: `auth`, `user`, `restaurant`, `menu`, `cart`, `order`, `payment`, `deli
 ## Entities
 
 - Every entity extends `common` `BaseEntity` (UUID id, `createdAt`, `updatedAt`). `BaseEntity` has **no** `version` field.
-- `@Version` is declared on `Order`, `Payment`, `Cart` and `DeliveryTask` only (their tables have a `version` column). Coupon redemption locks the `Coupon` row (`PESSIMISTIC_WRITE`).
+- `@Version` is declared on `Order`, `Payment`, `Cart` and `DeliveryTask` only (their tables have a `version` column). Coupon redemption, updates and deactivation lock the `Coupon` row (`PESSIMISTIC_WRITE`).
 - Allowed Lombok on entities: `@Getter`, `@NoArgsConstructor(access = PROTECTED)`, `@Builder` with `@AllArgsConstructor(access = PRIVATE)`. Never use `@Data`, `@Setter` or `@EqualsAndHashCode`.
 - Change state only through intention-revealing methods (`order.accept()`), which enforce invariants.
 - Use `@Enumerated(EnumType.STRING)` and lazy fetching. Never create a JPA relation to another module's entity; store its UUID instead.

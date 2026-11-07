@@ -27,7 +27,7 @@
   `{ "amount": "249.00", "currency": "INR" }`.
 - **Enums:** UPPER_SNAKE_CASE strings, e.g. `"READY_FOR_PICKUP"`.
 - **Nulls:** null fields are omitted from responses.
-- **Response body:** a single resource is returned directly. Lists use the pagination envelope in [§5](#5-pagination-sorting-and-filtering).
+- **Response body:** a single resource is returned directly. Lists use the pagination envelope in [§5](#5-pagination-sorting-and-filtering), except small lists with a fixed upper bound (a customer's addresses, an owner's restaurants, available coupons), which are plain JSON arrays.
 
 ## 3. HTTP methods and status codes
 
@@ -117,9 +117,10 @@ Any framework error whose status has no code below is returned as `MALFORMED_REQ
 | `CANNOT_BLOCK_ADMIN`        | 422  | Admins can't be blocked (prevents admin lockout) |
 | `ADDRESS_LIMIT_REACHED`     | 422  | A customer may keep at most 20 addresses   |
 | `CART_RESTAURANT_MISMATCH`  | 422  | Item from a different restaurant           |
-| `COUPON_INVALID`            | 422  | Unknown, inactive, not yet valid or expired coupon |
-| `COUPON_NOT_APPLICABLE`     | 422  | Minimum subtotal, restaurant or first-order rule not met, or a free-delivery coupon where delivery is already free |
+| `COUPON_INVALID`            | 422  | Unknown, inactive, not yet valid or expired coupon, or another restaurant's (one generic message, so codes can't be probed) |
+| `COUPON_NOT_APPLICABLE`     | 422  | Minimum subtotal or first-order rule not met, a free-delivery coupon where delivery is already free, or another currency |
 | `COUPON_LIMIT_REACHED`      | 422  | Per-customer or total usage limit reached  |
+| `COUPON_QUOTA_REACHED`      | 422  | A restaurant may have at most 50 active coupons |
 | `PRICE_CHANGED`             | 422  | Checkout price differs from the cart preview; re-read the cart |
 | `ITEM_UNAVAILABLE`          | 422  | Menu item out of stock or disabled         |
 | `RESTAURANT_CLOSED`         | 422  | Outside opening hours                      |
@@ -260,6 +261,7 @@ fee, coupon discount, tax and total.
 | GET    | `/api/v1/coupons/available?restaurantId=` | C      | Coupons the customer can currently use there      |
 | POST   | `/api/v1/restaurants/{id}/coupons`        | O      | Create a restaurant coupon                        |
 | GET    | `/api/v1/restaurants/{id}/coupons`        | O      | List your restaurant's coupons                    |
+| GET    | `/api/v1/coupons/{id}`                    | O/A    | Get a coupon (owner of its restaurant, or admin)  |
 | PATCH  | `/api/v1/coupons/{id}`                    | O/A    | Update a coupon (owner of its restaurant, or admin) |
 | POST   | `/api/v1/coupons/{id}/deactivate`         | O/A    | Deactivate a coupon                               |
 | POST   | `/api/v1/admin/coupons`                   | A      | Create a platform coupon                          |
@@ -272,9 +274,17 @@ fee, coupon discount, tax and total.
   required `maxDiscount`; `FREE_DELIVERY` takes neither. Terms that don't fit the type return
   `400 VALIDATION_FAILED`. `minOrderSubtotal` defaults to 0; omitted limits mean unlimited, except
   that a `firstOrderOnly` coupon is always once per customer. `validFrom`/`validUntil` must fall
-  between 2020 and 2100 (`validUntil` is exclusive); `description` takes no control characters.
+  between 2020 and 2100 (`validUntil` is exclusive); `description` takes no control or invisible
+  formatting characters (Unicode `Cc`/`Cf`, e.g. bidi overrides). A first-order coupon can't have a
+  `perCustomerLimit` above 1.
+- **Restaurant coupons** can be created only for an **approved** restaurant
+  (`409 INVALID_RESTAURANT_STATE`), and a restaurant may have at most 50 active (switched on, not
+  expired) coupons (`422 COUPON_QUOTA_REACHED`). Deactivating is always allowed.
 - **Create** returns `201` with `Location: /api/v1/coupons/{id}`. `PATCH` is partial: omitted
-  fields stay unchanged, and limits can be changed but not removed.
+  fields stay unchanged, and limits can be changed but not removed. Updates and deactivation lock
+  the coupon row, so concurrent edits don't overwrite each other.
+- **Rejections** (cart preview and checkout): unknown, inactive, not-yet-valid, expired and other
+  restaurants' codes all return `COUPON_INVALID` with the same message.
 - **Ownership:** an owner sees and changes only their own restaurants' coupons; another owner's
   coupon, or a platform coupon, returns `404`. Admins may change any coupon.
 - **Available coupons** are those that are active, inside their window and under both limits for

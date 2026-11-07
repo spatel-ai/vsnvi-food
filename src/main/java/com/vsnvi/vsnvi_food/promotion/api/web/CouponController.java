@@ -67,6 +67,13 @@ class CouponController {
         return PageResponse.from(page, CouponResponse::from);
     }
 
+    @GetMapping("/coupons/{id}")
+    @PreAuthorize("hasAnyRole('RESTAURANT_OWNER', 'ADMIN')")
+    @Operation(summary = "Get a coupon (owner of its restaurant, or admin)", operationId = "getCoupon")
+    CouponResponse get(@PathVariable UUID id) {
+        return CouponResponse.from(couponService.get(id));
+    }
+
     @PatchMapping("/coupons/{id}")
     @PreAuthorize("hasAnyRole('RESTAURANT_OWNER', 'ADMIN')")
     @Operation(

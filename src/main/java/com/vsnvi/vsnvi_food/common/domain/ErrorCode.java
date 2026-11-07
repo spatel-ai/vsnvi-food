@@ -31,6 +31,7 @@ public enum ErrorCode {
     COUPON_INVALID(422, "Coupon invalid"),
     COUPON_NOT_APPLICABLE(422, "Coupon not applicable"),
     COUPON_LIMIT_REACHED(422, "Coupon limit reached"),
+    COUPON_QUOTA_REACHED(422, "Coupon quota reached"),
     PRICE_CHANGED(422, "Price changed"),
     ITEM_UNAVAILABLE(422, "Item unavailable"),
     RESTAURANT_CLOSED(422, "Restaurant closed"),

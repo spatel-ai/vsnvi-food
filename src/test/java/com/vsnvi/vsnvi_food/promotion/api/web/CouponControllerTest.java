@@ -22,6 +22,8 @@ import com.vsnvi.vsnvi_food.common.web.GlobalExceptionHandler;
 import com.vsnvi.vsnvi_food.promotion.api.CouponType;
 import com.vsnvi.vsnvi_food.promotion.application.CouponService;
 import com.vsnvi.vsnvi_food.promotion.domain.CouponCodeTakenException;
+import com.vsnvi.vsnvi_food.promotion.domain.CouponQuotaReachedException;
+import com.vsnvi.vsnvi_food.promotion.domain.RestaurantNotApprovedException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -97,8 +99,10 @@ class CouponControllerTest {
                 .createRestaurantCoupon(
                         eq(RESTAURANT_ID),
                         argThat(d -> d.type() == CouponType.PERCENT
-                                && d.terms().firstOrderOnly()
-                                && d.terms().minOrderSubtotal().equals(Money.inr("0"))));
+                                && d.code().equals("welcome50")
+                                && d.firstOrderOnly()
+                                && d.maxDiscount().equals(Money.inr("100"))
+                                && d.minOrderSubtotal() == null));
     }
 
     @Test
@@ -432,6 +436,79 @@ class CouponControllerTest {
         mvc.perform(get("/api/v1/admin/coupons").header(HttpHeaders.AUTHORIZATION, owner()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    // --- review fixes: GET /coupons/{id}, approval, quota, invisible characters ---
+
+    @Test
+    void should_return_coupon_when_owner_gets_it() throws Exception {
+        given(couponService.get(COUPON_ID)).willReturn(COUPON);
+
+        mvc.perform(get("/api/v1/coupons/" + COUPON_ID).header(HttpHeaders.AUTHORIZATION, owner()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(COUPON_ID.toString()))
+                .andExpect(jsonPath("$.perCustomerLimit").value(1));
+    }
+
+    @Test
+    void should_return_not_found_when_owner_gets_someone_elses_coupon() throws Exception {
+        given(couponService.get(COUPON_ID)).willThrow(new NotFoundException("Coupon"));
+
+        mvc.perform(get("/api/v1/coupons/" + COUPON_ID).header(HttpHeaders.AUTHORIZATION, owner()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void should_return_forbidden_when_customer_gets_a_coupon() throws Exception {
+        mvc.perform(get("/api/v1/coupons/" + COUPON_ID)
+                        .header(HttpHeaders.AUTHORIZATION, bearer("CUSTOMER", UUID.randomUUID())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void should_return_unauthorized_when_anonymous_gets_a_coupon() throws Exception {
+        mvc.perform(get("/api/v1/coupons/" + COUPON_ID))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void should_return_conflict_when_restaurant_is_not_approved() throws Exception {
+        given(couponService.createRestaurantCoupon(eq(RESTAURANT_ID), any()))
+                .willThrow(new RestaurantNotApprovedException());
+
+        mvc.perform(post(restaurantCoupons())
+                        .header(HttpHeaders.AUTHORIZATION, owner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_RESTAURANT_STATE"));
+    }
+
+    @Test
+    void should_return_unprocessable_when_restaurant_has_too_many_active_coupons() throws Exception {
+        given(couponService.createRestaurantCoupon(eq(RESTAURANT_ID), any()))
+                .willThrow(new CouponQuotaReachedException());
+
+        mvc.perform(post(restaurantCoupons())
+                        .header(HttpHeaders.AUTHORIZATION, owner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_BODY))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.code").value("COUPON_QUOTA_REACHED"));
+    }
+
+    @Test
+    void should_reject_description_when_it_contains_a_bidi_override() throws Exception {
+        mvc.perform(post(restaurantCoupons())
+                        .header(HttpHeaders.AUTHORIZATION, owner())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREATE_BODY.replace("\"type\"", "\"description\":\"50% off\\u202E\",\"type\"")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("description"));
     }
 
     private static String restaurantCoupons() {

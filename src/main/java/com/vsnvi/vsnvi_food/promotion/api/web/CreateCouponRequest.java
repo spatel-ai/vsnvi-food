@@ -1,10 +1,8 @@
 package com.vsnvi.vsnvi_food.promotion.api.web;
 
-import com.vsnvi.vsnvi_food.common.domain.Money;
 import com.vsnvi.vsnvi_food.common.web.MoneyInput;
 import com.vsnvi.vsnvi_food.promotion.api.CouponType;
 import com.vsnvi.vsnvi_food.promotion.application.CouponService;
-import com.vsnvi.vsnvi_food.promotion.domain.Coupon;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -31,7 +29,7 @@ record CreateCouponRequest(
         @NotNull CouponType type,
 
         @Size(max = 200)
-        @Pattern(regexp = "[^\\p{Cntrl}]*", message = "must not contain control characters")
+        @Pattern(regexp = "[^\\p{Cc}\\p{Cf}]*", message = "must not contain control or invisible formatting characters")
         @Schema(example = "50% off up to 100 on your first order")
         String description,
 
@@ -60,16 +58,15 @@ record CreateCouponRequest(
         return new CouponService.NewCoupon(
                 code,
                 type,
-                new Coupon.Terms(
-                        description,
-                        amountOff == null ? null : amountOff.toMoney(),
-                        percentOff,
-                        maxDiscount == null ? null : maxDiscount.toMoney(),
-                        minOrderSubtotal == null ? Money.zero(Money.INR) : minOrderSubtotal.toMoney(),
-                        validFrom,
-                        validUntil,
-                        perCustomerLimit,
-                        totalLimit,
-                        Boolean.TRUE.equals(firstOrderOnly)));
+                description,
+                amountOff == null ? null : amountOff.toMoney(),
+                percentOff,
+                maxDiscount == null ? null : maxDiscount.toMoney(),
+                minOrderSubtotal == null ? null : minOrderSubtotal.toMoney(),
+                validFrom,
+                validUntil,
+                perCustomerLimit,
+                totalLimit,
+                Boolean.TRUE.equals(firstOrderOnly));
     }
 }

@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** {@code findByCodeForUpdate} comes from the {@link CouponLocking} fragment. */
-interface CouponJpaRepository extends JpaRepository<Coupon, UUID>, CouponRepository, CouponLocking {
+/** {@code insert} and the {@code ...ForUpdate} lookups come from the {@link CouponStore} fragment. */
+interface CouponJpaRepository extends JpaRepository<Coupon, UUID>, CouponRepository, CouponStore {
 
     @Override
     @Query("""
@@ -19,4 +19,10 @@ interface CouponJpaRepository extends JpaRepository<Coupon, UUID>, CouponReposit
               and (c.restaurantId is null or c.restaurantId = :restaurantId)
             order by c.validUntil asc, c.code asc""")
     List<Coupon> findUsableAt(@Param("restaurantId") UUID restaurantId, @Param("now") Instant now);
+
+    @Override
+    @Query("""
+            select count(c) from Coupon c
+            where c.restaurantId = :restaurantId and c.active = true and c.validUntil > :now""")
+    long countActiveByRestaurantId(@Param("restaurantId") UUID restaurantId, @Param("now") Instant now);
 }

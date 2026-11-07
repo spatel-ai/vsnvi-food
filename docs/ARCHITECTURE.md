@@ -560,6 +560,10 @@ discount amount: `promotion` calculates it (`evaluate` for the preview, `redeem`
   - A rejection from `evaluate` doesn't mark the caller's transaction rollback-only, so `cart` can
     catch it and still commit. A rejection from `redeem` does, which is fine because checkout fails.
   - A first-order coupon can be used once per customer even without a `perCustomerLimit`.
+  - Unknown, inactive, not-yet-valid, expired and other restaurants' codes are all
+    `COUPON_INVALID` with one message, so customers can't probe which codes exist.
+  - A redeem that waited on the lock re-checks for a redemption of the same order, so a concurrent
+    retry of one checkout replays instead of failing.
   - **Checkout must serialize a customer's checkouts** (e.g. lock the customer's row) before it
     computes `isFirstOrder`: the coupon lock stops one first-order coupon being used twice, but two
     different first-order coupons lock different rows. Checkout runs at READ COMMITTED, so the usage
@@ -567,6 +571,8 @@ discount amount: `promotion` calculates it (`evaluate` for the preview, `redeem`
   - `release` is idempotent and a no-op for an order without a coupon.
   - Usage limits count the `REDEEMED` rows of `coupon_redemptions` while the coupon row is locked,
     so there is no separate counter to drift.
+- **Management:** only approved restaurants can create coupons, at most 50 active per restaurant.
+  Updates and deactivation lock the coupon row (`PESSIMISTIC_WRITE`) like `redeem`.
 - **Funding and settlement** of discounts between the platform and restaurants are out of scope
   for v1.
 

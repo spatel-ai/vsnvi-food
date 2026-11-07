@@ -98,6 +98,8 @@ Modules are listed in build order: a module comes after every module it calls or
 - [ ] `CartPricing`: subtotal, packaging, delivery fee, coupon discount (amount from `PromotionApi`), tax (`pricing.tax-percent`)
 - [ ] Public facade: `CartApi` (priced cart, `clear` at checkout)
 - [ ] API: `/cart`, `/cart/coupon`
+  - Rate-limit `POST /cart/coupon` (slows code guessing; promotion review, 2026-11-07)
+  - Catch `CouponRejectedException` from `evaluate` to show the reason; the read still commits
 - [ ] Tests
 
 ### payment
@@ -109,6 +111,7 @@ Modules are listed in build order: a module comes after every module it calls or
 - [ ] Events: `PaymentSucceeded`, `PaymentFailed`, `RefundIssued`
 - [ ] Refunds and voids via `PaymentApi.cancelPayment`, refund webhooks, auto-refund of late captures (the only place they are refunded)
 - [ ] Cash on delivery flow (`PENDING_COLLECTION` → `COLLECTED`)
+- [ ] Totals below Razorpay's ₹1 minimum (an owner coupon can discount items to ₹0): no-payment path or rejection (promotion review, 2026-11-07)
 - [ ] API: `/payments/*`
 - [ ] Tests
 
@@ -122,6 +125,7 @@ Modules are listed in build order: a module comes after every module it calls or
 - [ ] Checkout: pricing snapshot from `CartApi`, `PromotionApi.redeem` (passes `isFirstOrder`), `CartApi.clear`, then `PaymentApi.openGatewayOrder` after commit
   - Serialize a customer's checkouts (e.g. lock the customer's row) before computing `isFirstOrder`, and test concurrent first-order checkouts (`PromotionApi.redeem` javadoc)
 - [ ] Calls `PaymentApi.cancelPayment` and `PromotionApi.release` on reject, cancel and timeout, and `PaymentApi.markCollected` on COD delivery
+- [ ] Decide who funds restaurant coupons before settlement exists (ARCHITECTURE §8: out of scope for v1)
 - [ ] Payment timeout job: cancels orders stuck in `PAYMENT_PENDING` for 15 minutes
 - [ ] API: `/orders`, `/users/me/orders`, `/restaurants/{id}/orders`
 - [ ] Tests (every allowed and forbidden transition)
